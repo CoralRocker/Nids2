@@ -1,0 +1,6 @@
+name = "object"
+id = 4
+dim = [32, 48]
+sides = 4
+img_per_side = 4
+category = "player"
