@@ -8,6 +8,9 @@ use lazy_static;
 use std::sync::{atomic, Arc, Mutex};
 use std::mem::drop;
 
+/**
+ * Holds the data for an object type. Note that this cannot create an instance of an object; it just holds the default configuration and texture.
+ */
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ObjectConfig { 
     pub name: String,
@@ -17,13 +20,21 @@ pub struct ObjectConfig {
     pub img_per_side: i32,
     pub category: String,
     pub image_speed: Option<i32>,
+    pub default_b_box: Option<Vec<(i32, i32)>>,
 }
 
 lazy_static::lazy_static! {
+    /** Hash Map of object types that are loaded into memory. Each map element contains an Arc with a texture and an ObjectConfig object. It is static so that all modules which import game can use it.
+     */
     pub static ref LOADED_TEXTURES: Mutex<HashMap<i32, Arc<(Texture2D, ObjectConfig)>>> = Mutex::new(HashMap::new());
+    
+    /** A static boolean used to tell if the game textures and data have been loaded yet.
+     */
     static ref INITIALIZED: atomic::AtomicBool = atomic::AtomicBool::new(false);
 }
 
+/** Initializes the game memory. Should only be done once during the program. Call destroy() to clear the memory created by this. After destroying the game, it is possible to instantiate it again. 
+ */
 pub fn init(rl: &mut RaylibHandle, rt: &RaylibThread) {
     if INITIALIZED.load(atomic::Ordering::Relaxed) {
         return;
@@ -52,6 +63,8 @@ pub fn init(rl: &mut RaylibHandle, rt: &RaylibThread) {
     INITIALIZED.store(true, atomic::Ordering::Relaxed);
 }
 
+/** Clear the memory that has been allocated for textures and object configurations. Essentially forces the game to forget all object types.
+ */
 pub fn destroy() {
     if INITIALIZED.load(atomic::Ordering::Relaxed) {
         return;

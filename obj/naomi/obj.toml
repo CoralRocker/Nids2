@@ -4,4 +4,5 @@ dim = [32, 48]
 sides = 4
 img_per_side = 4
 category = "player"
-image_speed = 4
+image_speed = 8
+default_b_box = [[0,0], [31, 0], [31, 47], [0, 47]]
