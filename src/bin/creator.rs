@@ -130,6 +130,7 @@ fn main() {
     handle.gui_load_style(Some(rstr!("candy.rgs")));
 
     let mut object_mode = false;
+    let mut bounding_box_mode = false;
     let mut spritesheet = handle
         .load_texture_from_image(&thread, &Image::gen_image_color(1, 1, Color::WHITE))
         .expect("Fucky");
@@ -297,7 +298,7 @@ fn main() {
             }
 
             if d.gui_button(
-                rrect(scr_w / 2, 322, scr_w / 2, 64),
+                rrect(scr_w / 2, 386, scr_w / 2, 64),
                 Some(CString::new("Save and Exit").unwrap().as_c_str()),
             ) {
             
@@ -340,11 +341,95 @@ fn main() {
 
                 let color = Color::DARKPURPLE.fade(fade);
                 if frame_count  < max_frame {
-                    draw_text_centered(&mut d,/* &font, */ &e, scr_w/4 * 3, 386, 24, color);
+                    draw_text_centered(&mut d,/* &font, */ &e, scr_w/4 * 3, 450, 24, color);
                 }else{
                     err = None; 
                 }
 
+            }
+            
+            if d.gui_button(
+                rrect(scr_w / 2, 322, scr_w / 2, 64),
+                Some(CString::new("Create Bounding Box").unwrap().as_c_str()),
+            ) {
+                bounding_box_mode = true; 
+                let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
+                let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
+                obj.conf.default_b_box = Some((0, 0, 1, 1));
+                obj.conf.dim = (spr_w, spr_h);
+                obj.conf.sides = *side_options.get(side as usize).unwrap();
+                obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
+            }
+            if bounding_box_mode {
+                let mode_rect = rrect(scr_w as f32 * 0.25, scr_h as f32 * 0.25, scr_w/2, scr_h/2);
+                ds_rounded_rectangle(
+                    &mut d,
+                    mode_rect,
+                    0.5,
+                    4);
+                let (mut x, mut y, mut width, mut height): (&mut i32, &mut i32, &mut i32, &mut i32) = obj.conf.default_b_box.as_mut().map(|tup| (&mut tup.0, &mut tup.1, &mut tup.2, &mut tup.3)).unwrap();
+                
+                let src_rect = rrect(0, 0, obj.conf.dim.0, obj.conf.dim.1);
+                let mut spr_rect = rrect(mode_rect.x + mode_rect.width/2.0, mode_rect.y + mode_rect.height/2.0, src_rect.width, src_rect.height);
+                
+                let target_w = mode_rect.width / 2.0;
+                let target_h = mode_rect.height / 2.0;
+
+                if spr_rect.width < (target_w - 60.0) {
+                    spr_rect.height *= target_w / spr_rect.width;
+                    spr_rect.width = target_w;
+                } else if spr_rect.height < (target_h - 60.0) {
+                    spr_rect.width *= target_h / spr_rect.height;
+                    spr_rect.height = target_h;
+                }
+                
+                if spr_rect.width > (target_w) {
+                    spr_rect.height *= target_w / spr_rect.width;
+                    spr_rect.width = target_w;
+                } else if spr_rect.height > (target_h) {
+                    spr_rect.width *= target_h / spr_rect.height;
+                    spr_rect.height = target_h; 
+                }
+                
+                spr_rect.x -= spr_rect.width/2.0;
+                spr_rect.y -= spr_rect.height/2.0;
+
+                d.draw_texture_pro(&spritesheet, src_rect, spr_rect, rvec2(0,0), 0.0, Color::WHITE);
+                
+                *x = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 25.0, 80, 15),
+                            Some(rstr!("Modify BBox X")),
+                            None,
+                            *x as f32,
+                            0.0, 
+                            src_rect.width - 1.0) as i32;
+                *y = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 45.0, 80, 15),
+                            Some(rstr!("Modify BBox Y")),
+                            None,
+                            *y as f32,
+                            0.0, 
+                            src_rect.height - 1.0) as i32;
+                *width = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 65.0, 80, 15),
+                            Some(rstr!("Modify BBox WIDTH")),
+                            None,
+                            *width as f32,
+                            0.0, 
+                            src_rect.width - *x as f32) as i32;
+                *height = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 85.0, 80, 15),
+                            Some(rstr!("Modify BBox HEIGHT")),
+                            None,
+                            *height as f32,
+                            0.0, 
+                            src_rect.height - *y as f32) as i32;
+                
+                let mut bbox = rrect(*x, *y, *width, *height);
+                let factor = spr_rect.width / src_rect.width;
+                bbox.x *= factor;
+                bbox.x += spr_rect.x;
+                bbox.y *= factor;
+                bbox.y += spr_rect.y;
+                bbox.width *= factor;
+                bbox.height *= factor;
+                d.draw_rectangle_lines_ex(bbox, 1, Color::BLACK);
             }
         }
     }

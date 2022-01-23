@@ -132,12 +132,7 @@ impl GenericObject {
             side_index: 0,
             object_data: Arc::clone(&data),
             side_shift_speed: data.1.image_speed.unwrap_or(0),
-            b_box: data.1.default_b_box.as_ref().map(|v| Rectangle {
-                x: v.0,
-                y: v.1,
-                width: v.2,
-                height: v.3,
-            }),
+            b_box: data.1.default_b_box.as_ref().map(|v| rrect(v.0, v.1, v.2, v.3)),
         }
     }
 
