@@ -1,6 +1,0 @@
-name = "wall"
-id = 2
-dim = [32, 64]
-sides = 2
-img_per_side = 1
-category = "environment"

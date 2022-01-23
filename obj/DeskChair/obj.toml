@@ -1,0 +1,6 @@
+name = "DeskChair"
+id = 4
+dim = [32, 64]
+sides = 1
+img_per_side = 5
+category = "Furniture"

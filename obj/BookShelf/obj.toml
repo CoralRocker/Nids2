@@ -1,0 +1,6 @@
+name = "BookShelf"
+id = 3
+dim = [64, 80]
+sides = 1
+img_per_side = 2
+category = "Furniture"
