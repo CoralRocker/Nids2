@@ -1,3 +1,8 @@
+// GAME.RS
+// Use for system-level things such as statics, unsafe code, and memory loading at
+// the start of the game. Should not deal with high-level objects and no drawing.
+
+
 #![allow(dead_code, unused_imports, unused_variables, non_snake_case)]
 
 use crate::*;

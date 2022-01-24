@@ -1,3 +1,7 @@
+// UTIL.RS
+// Use for functions dealing with objects and displaying textures and menus.
+// Not for memory allocation or system-level things.
+
 use raylib::prelude::*;
 use std::cell::RefCell;
 use std::rc;
