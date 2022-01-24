@@ -132,7 +132,11 @@ impl GenericObject {
             side_index: 0,
             object_data: Arc::clone(&data),
             side_shift_speed: data.1.image_speed.unwrap_or(0),
-            b_box: data.1.default_b_box.as_ref().map(|v| rrect(v.0, v.1, v.2, v.3)),
+            b_box: data
+                .1
+                .default_b_box
+                .as_ref()
+                .map(|v| rrect(v.0, v.1, v.2, v.3)),
         }
     }
 
@@ -215,9 +219,9 @@ impl GenericObject {
         }
         self
     }
-    
+
     pub fn move_x_unchecked(&mut self, amt: i32) -> &mut Self {
-        self.pos.x += amt; 
+        self.pos.x += amt;
         self
     }
 
@@ -232,9 +236,9 @@ impl GenericObject {
         }
         self
     }
-    
+
     pub fn move_y_unchecked(&mut self, amt: i32) -> &mut Self {
-        self.pos.y += amt; 
+        self.pos.y += amt;
         self
     }
 

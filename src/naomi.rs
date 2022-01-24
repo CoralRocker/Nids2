@@ -115,7 +115,11 @@ impl Naomi {
 
     /** Check for recent input from the user
      */
-    pub fn handle_input(&mut self, rl: &mut RaylibHandle, next_id: i32) -> Option<Rc<RefCell<GenericObject>>> {
+    pub fn handle_input(
+        &mut self,
+        rl: &mut RaylibHandle,
+        next_id: i32,
+    ) -> Option<Rc<RefCell<GenericObject>>> {
         if self.moving {
             return None;
         }
@@ -164,23 +168,11 @@ impl Naomi {
                 self.select_obj = None;
                 return Some(obj);
             } else {
-                let mut obj = GenericObject::new(
-                    next_id,
-                    self.select_obj_type,
-                    None,
-                );
+                let mut obj = GenericObject::new(next_id, self.select_obj_type, None);
                 let obj_position: Position = match self.dir {
-                    Direction::Right => {
-                        self.base.pos.offset(32, 16 - obj.height() / 2)
-                    }
-                    Direction::Up => self.base.pos.offset(
-                        16 - obj.width() / 2,
-                        -obj.height(),
-                    ),
-                    Direction::Left => self.base.pos.offset(
-                        -obj.width(),
-                        16 - obj.height() / 2,
-                    ),
+                    Direction::Right => self.base.pos.offset(32, 16 - obj.height() / 2),
+                    Direction::Up => self.base.pos.offset(16 - obj.width() / 2, -obj.height()),
+                    Direction::Left => self.base.pos.offset(-obj.width(), 16 - obj.height() / 2),
                     Direction::Down => self.base.pos.offset(16 - obj.width() / 2, 48),
                 };
 

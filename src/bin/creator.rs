@@ -26,7 +26,6 @@ fn get_next_id() -> i32 {
     max_id
 }
 
-
 fn divisors_bar(num: i32) -> Result<Vec<i32>, String> {
     if num < 1 {
         return Err("Cannot get divisors of a negative number!".to_string());
@@ -215,16 +214,22 @@ fn main() {
             // draw texture appropriately to fit on screen.
             let mut sprsht_rec = rrect(0, 0, spritesheet.width(), spritesheet.height());
             let src_rect = sprsht_rec;
-            if src_rect.width > (scr_w/2) as f32 {
-                sprsht_rec.height *= (scr_w/2) as f32 / sprsht_rec.width;
-                sprsht_rec.width = (scr_w/2) as f32;
+            if src_rect.width > (scr_w / 2) as f32 {
+                sprsht_rec.height *= (scr_w / 2) as f32 / sprsht_rec.width;
+                sprsht_rec.width = (scr_w / 2) as f32;
             }
-            if sprsht_rec.height > (scr_h/2) as f32{
-                sprsht_rec.width *= (scr_h/2) as f32 / sprsht_rec.height;
-                sprsht_rec.height = (scr_h/2) as f32;
+            if sprsht_rec.height > (scr_h / 2) as f32 {
+                sprsht_rec.width *= (scr_h / 2) as f32 / sprsht_rec.height;
+                sprsht_rec.height = (scr_h / 2) as f32;
             }
-            d.draw_texture_pro(&spritesheet, src_rect, sprsht_rec, rvec2(0,0), 0.0, Color::WHITE);
-            
+            d.draw_texture_pro(
+                &spritesheet,
+                src_rect,
+                sprsht_rec,
+                rvec2(0, 0),
+                0.0,
+                Color::WHITE,
+            );
 
             d.gui_panel(Rectangle {
                 x: (scr_w / 2) as f32,
@@ -301,11 +306,11 @@ fn main() {
                 rrect(scr_w / 2, 386, scr_w / 2, 64),
                 Some(CString::new("Save and Exit").unwrap().as_c_str()),
             ) {
-            
                 let path = format!("obj/{}", obj.conf.name);
                 if fs::read_dir(path).is_err() {
                     obj.conf.id = get_next_id();
-                    let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
+                    let spr_w =
+                        spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
                     let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
                     obj.conf.dim = (spr_w, spr_h);
                     obj.conf.sides = *side_options.get(side as usize).unwrap();
@@ -324,9 +329,12 @@ fn main() {
                     let _ = file.write(toml.as_bytes());
                     let _ = fs::copy(&obj.image_name, path.clone() + "/spr.png");
                     object_mode = false;
-                }else{
-                    err = Some(("Object With This Name Already Exists!".to_string(), frame_count));
-                } 
+                } else {
+                    err = Some((
+                        "Object With This Name Already Exists!".to_string(),
+                        frame_count,
+                    ));
+                }
             }
 
             if let Some((e, f)) = &err {
@@ -334,25 +342,24 @@ fn main() {
                 let max_frame = trans_frame + 60;
                 let fade;
                 if *f >= trans_frame && *f < max_frame {
-                    fade = -(trans_frame-f)as f32 / 60.0;
-                }else{
+                    fade = -(trans_frame - f) as f32 / 60.0;
+                } else {
                     fade = 1.0;
                 }
 
                 let color = Color::DARKPURPLE.fade(fade);
-                if frame_count  < max_frame {
-                    draw_text_centered(&mut d,/* &font, */ &e, scr_w/4 * 3, 450, 24, color);
-                }else{
-                    err = None; 
+                if frame_count < max_frame {
+                    draw_text_centered(&mut d, /* &font, */ e, scr_w / 4 * 3, 450, 24, color);
+                } else {
+                    err = None;
                 }
-
             }
-            
+
             if d.gui_button(
                 rrect(scr_w / 2, 322, scr_w / 2, 64),
                 Some(CString::new("Create Bounding Box").unwrap().as_c_str()),
             ) {
-                bounding_box_mode = true; 
+                bounding_box_mode = true;
                 let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
                 let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
                 obj.conf.default_b_box = Some((0, 0, 1, 1));
@@ -361,17 +368,28 @@ fn main() {
                 obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
             }
             if bounding_box_mode {
-                let mode_rect = rrect(scr_w as f32 * 0.25, scr_h as f32 * 0.25, scr_w/2, scr_h/2);
-                ds_rounded_rectangle(
-                    &mut d,
-                    mode_rect,
-                    0.5,
-                    4);
-                let (mut x, mut y, mut width, mut height): (&mut i32, &mut i32, &mut i32, &mut i32) = obj.conf.default_b_box.as_mut().map(|tup| (&mut tup.0, &mut tup.1, &mut tup.2, &mut tup.3)).unwrap();
-                
+                let mode_rect = rrect(
+                    scr_w as f32 * 0.25,
+                    scr_h as f32 * 0.25,
+                    scr_w / 2,
+                    scr_h / 2,
+                );
+                ds_rounded_rectangle(&mut d, mode_rect, 0.5, 4);
+                let (x, y, width, height): (&mut i32, &mut i32, &mut i32, &mut i32) = obj
+                    .conf
+                    .default_b_box
+                    .as_mut()
+                    .map(|tup| (&mut tup.0, &mut tup.1, &mut tup.2, &mut tup.3))
+                    .unwrap();
+
                 let src_rect = rrect(0, 0, obj.conf.dim.0, obj.conf.dim.1);
-                let mut spr_rect = rrect(mode_rect.x + mode_rect.width/2.0, mode_rect.y + mode_rect.height/2.0, src_rect.width, src_rect.height);
-                
+                let mut spr_rect = rrect(
+                    mode_rect.x + mode_rect.width / 2.0,
+                    mode_rect.y + mode_rect.height / 2.0,
+                    src_rect.width,
+                    src_rect.height,
+                );
+
                 let target_w = mode_rect.width / 2.0;
                 let target_h = mode_rect.height / 2.0;
 
@@ -382,45 +400,69 @@ fn main() {
                     spr_rect.width *= target_h / spr_rect.height;
                     spr_rect.height = target_h;
                 }
-                
+
                 if spr_rect.width > (target_w) {
                     spr_rect.height *= target_w / spr_rect.width;
                     spr_rect.width = target_w;
                 } else if spr_rect.height > (target_h) {
                     spr_rect.width *= target_h / spr_rect.height;
-                    spr_rect.height = target_h; 
+                    spr_rect.height = target_h;
                 }
-                
-                spr_rect.x -= spr_rect.width/2.0;
-                spr_rect.y -= spr_rect.height/2.0;
 
-                d.draw_texture_pro(&spritesheet, src_rect, spr_rect, rvec2(0,0), 0.0, Color::WHITE);
-                
-                *x = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 25.0, 80, 15),
-                            Some(rstr!("Modify BBox X")),
-                            None,
-                            *x as f32,
-                            0.0, 
-                            src_rect.width - 1.0) as i32;
-                *y = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 45.0, 80, 15),
-                            Some(rstr!("Modify BBox Y")),
-                            None,
-                            *y as f32,
-                            0.0, 
-                            src_rect.height - 1.0) as i32;
-                *width = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 65.0, 80, 15),
-                            Some(rstr!("Modify BBox WIDTH")),
-                            None,
-                            *width as f32,
-                            0.0, 
-                            src_rect.width - *x as f32) as i32;
-                *height = d.gui_slider(rrect(mode_rect.x + 75.0, mode_rect.y + 85.0, 80, 15),
-                            Some(rstr!("Modify BBox HEIGHT")),
-                            None,
-                            *height as f32,
-                            0.0, 
-                            src_rect.height - *y as f32) as i32;
-                
+                spr_rect.x -= spr_rect.width / 2.0;
+                spr_rect.y -= spr_rect.height / 2.0;
+
+                d.draw_texture_pro(
+                    &spritesheet,
+                    src_rect,
+                    spr_rect,
+                    rvec2(0, 0),
+                    0.0,
+                    Color::WHITE,
+                );
+
+                *x = d.gui_slider(
+                    rrect(mode_rect.x + mode_rect.width * (1.0/8.0), mode_rect.y + mode_rect.height * (1.0/3.0), 160, 15),
+                    Some(rstr!("Modify BBox X")),
+                    None,
+                    *x as f32,
+                    0.0,
+                    src_rect.width - 1.0,
+                ) as i32;
+                *y = d.gui_slider(
+                    rrect(mode_rect.x + mode_rect.width * (1.0/8.0), mode_rect.y + mode_rect.height * (2.0/3.0), 160, 15),
+                    Some(rstr!("Modify BBox Y")),
+                    None,
+                    *y as f32,
+                    0.0,
+                    src_rect.height - 1.0,
+                ) as i32;
+                *width = d.gui_slider(
+                    rrect(mode_rect.x + mode_rect.width * (6.0/8.0), mode_rect.y + mode_rect.height * (1.0/3.0), 160, 15),
+                    Some(rstr!("Modify BBox WIDTH")),
+                    None,
+                    *width as f32,
+                    0.0,
+                    src_rect.width - *x as f32,
+                ) as i32;
+                *height = d.gui_slider(
+                    rrect(mode_rect.x + mode_rect.width * (6.0/8.0), mode_rect.y + mode_rect.height * (2.0/3.0), 160, 15),
+                    Some(rstr!("Modify BBox HEIGHT")),
+                    None,
+                    *height as f32,
+                    0.0,
+                    src_rect.height - *y as f32,
+                ) as i32;
+
+                draw_text_centered(
+                    &mut d,
+                    format!("({}, {}) {}px X {}px", *x, *y, *width, *height).as_str(),
+                    (mode_rect.x + mode_rect.width / 2.0) as i32,
+                    (mode_rect.y + 45.0) as i32,
+                    24,
+                    Color::BLACK,
+                );
+
                 let mut bbox = rrect(*x, *y, *width, *height);
                 let factor = spr_rect.width / src_rect.width;
                 bbox.x *= factor;
