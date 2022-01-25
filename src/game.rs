@@ -25,7 +25,7 @@ use crate::object::*;
 /**
  * Holds the data for an object type. Note that this cannot create an instance of an object; it just holds the default configuration and spritesheet information.
  */
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ObjectConfig {
     pub name: String,
     pub id: i32,

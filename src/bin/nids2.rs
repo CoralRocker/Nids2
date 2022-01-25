@@ -32,7 +32,7 @@ fn main() {
 
     rl.gui_load_style(Some(rstr!("candy.rgs")));
     let font = rl.load_font(&thread, "v5easter.ttf").unwrap();
-    rl.gui_set_font(font);
+    rl.gui_set_font(&font);
     rl.set_target_fps(60);
     game::color_init(&mut rl);
     let mut frame_no: i32 = 0;
@@ -119,6 +119,7 @@ fn main() {
 
             let (furn_button, furn_vec) = util::ds_rounded_button_centered(
                 &mut d,
+                &font,
                 rrect(
                     scr_w as f32 * 0.25,
                     scr_h - menu_height / 2,
@@ -129,6 +130,7 @@ fn main() {
             );
             let (opt_button, opt_vec) = util::ds_rounded_button_centered(
                 &mut d,
+                &font,
                 rrect(
                     scr_w as f32 * 0.5,
                     scr_h - menu_height / 2,
@@ -140,6 +142,7 @@ fn main() {
 
             let (exit_button, exit_vec) = util::ds_rounded_button_centered(
                 &mut d,
+                &font,
                 rrect(
                     scr_w as f32 * 0.75,
                     scr_h - menu_height / 2,
@@ -167,6 +170,7 @@ fn main() {
                     let scroll_height = 80.0;
                     if util::ds_scroll_selection(
                         &mut d,
+                        &font,
                         rrect(
                             furn_vec.x,
                             furn_vec.y - scroll_height,
@@ -192,6 +196,7 @@ fn main() {
                     }
                     if util::ds_scroll_selection(
                         &mut d,
+                        &font,
                         rrect(
                             furn_vec.x,
                             furn_vec.y - scroll_height,

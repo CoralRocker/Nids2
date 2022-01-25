@@ -173,40 +173,22 @@ pub fn advanced_input(
     }
 }
 
-// fn simple_input(
-//     rld: &mut RaylibDrawHandle,
-//     bounds: Rectangle,
-//     text: &mut String,
-//     buf: &mut [u8]
-// ) {
-//
-//     let res = rld.gui_text_box(bounds, buf, bounds.check_collision_point_rec(rld.get_mouse_position()));
-//     if res {
-//         println!("Recieved a valid update");
-//         *text = String::from_utf8(buf.to_vec())
-//             .expect("Invalid UTF-8!")
-//             .to_lowercase();
-//         text.truncate(text.find('\0').expect("Not a null-terminated string!"));
-//         println!("Text is now: {}", text);
-//     }
-// }
-
 /// Print `text` using the default font with given fontsize. Text is centered on x and y.
 pub fn draw_text_centered(
     rld: &mut RaylibDrawHandle,
-    //    font: Option<impl AsRef<raylib::ffi::Font>>,
+    font: &Font,
     text: &str,
     posx: i32,
     posy: i32,
     fontsize: i32,
     clr: Color,
 ) {
-    let fnt: WeakFont = rld.get_font_default();
+    // let fnt: WeakFont = rld.get_font_default();
 
     let spacing = 1.0;
-    let txtsize = measure_text_ex(&fnt, text, fontsize as f32, spacing);
+    let txtsize = measure_text_ex(font, text, fontsize as f32, spacing);
     rld.draw_text_ex(
-        &fnt,
+        font,
         text,
         rvec2(
             posx as f32 - txtsize.x as f32 / 2.0,
@@ -322,6 +304,7 @@ pub fn ds_rounded_rectangle_lines(
 /// Draws a rounded button centered.
 pub fn ds_rounded_button_centered(
     rd: &mut RaylibDrawHandle,
+    font: &Font,
     rec: impl Into<ffirect>,
     text: Option<&str>,
 ) -> (bool, Vector2) {
@@ -334,12 +317,13 @@ pub fn ds_rounded_button_centered(
     rec.x -= rec.width / 2.0;
     rec.y -= rec.height / 2.0;
 
-    ds_rounded_button(rd, rec, text)
+    ds_rounded_button(rd, font, rec, text)
 }
 
 /// Draws a rounded button with the default rgui style
 pub fn ds_rounded_button(
     rd: &mut RaylibDrawHandle,
+    font: &Font,
     rec: impl Into<ffirect>,
     text: Option<&str>,
 ) -> (bool, Vector2) {
@@ -383,6 +367,7 @@ pub fn ds_rounded_button(
         // let _ctext = CString::new(s);
         draw_text_centered(
             rd,
+            font,
             s,
             (rec.x + rec.width / 2.0) as i32,
             (rec.y + rec.height / 2.0) as i32,
@@ -410,18 +395,19 @@ pub fn rect_midpoint(rec: Rectangle) -> (i32, i32) {
 /// A Scrollable selection box with mouse control
 pub fn ds_scroll_selection(
     rd: &mut RaylibDrawHandle,
+    font: &Font,
     rec: Rectangle,
     selections: &Vec<String>,
     selection: &mut i32,
 ) -> bool {
     let active = rec.check_collision_point_rec(rd.get_mouse_position());
     let border_w = mutex_get(&BORDER_WIDTH);
-    let mut item_rect = rrect(rec.x + 2.0, rec.y - 20.0, rec.width - 4.0, 20);
+    let mut item_rect = rrect(rec.x + 2.0, rec.y - 30.0, rec.width - 4.0, 30);
 
     rd.draw_rectangle_rounded(rec, 0.4, 5, mutex_get(&BASE_COLOR_NORMAL));
     rd.draw_rectangle_rounded_lines(rec, 0.4, 5, border_w, mutex_get(&BORDER_COLOR_NORMAL));
 
-    let num_items = (rec.height - 12.0) as i32 / 20;
+    let num_items = (rec.height - 12.0) as i32 / item_rect.height as i32;
 
     // Scroll Selection Logic
     if *selection >= selections.len() as i32 {
@@ -432,11 +418,11 @@ pub fn ds_scroll_selection(
     }
 
     for n in 0..num_items {
-        item_rect.y += 22.0;
+        item_rect.y += item_rect.height + 2.0;
         let (cx, cy) = rect_midpoint(item_rect);
         let txt = selections.get((n + *selection) as usize);
         if let Some(t) = txt {
-            draw_text_centered(rd, t, cx, cy, 12, Color::BLACK);
+            draw_text_centered(rd, font, t, cx, cy, 16, Color::BLACK);
         }
         if item_rect.check_collision_point_rec(rd.get_mouse_position()) {
             rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::WHITE.fade(0.40));
@@ -457,5 +443,28 @@ pub fn ds_scroll_selection(
     }
 
     false
+}
+
+pub fn ds_draw_slider_centered(
+    d: &mut RaylibDrawHandle,
+    font: &Font,
+    title: &str,
+    center: Vector2,
+    width: f32,
+    height: f32,
+    value: &mut i32,
+    min_val: f32,
+    max_val: f32,
+    center_title: bool
+) {
+    if center_title {
+        draw_text_centered(d, font, title, center.x as i32, (center.y - height/2.0) as i32, 16, Color::BLACK);
+    }else{
+        d.draw_text(title, center.x as i32, center.x as i32, 16, Color::BLACK);
+    }
+
+    *value = d.gui_slider_bar(rrect(center.x - width/2.0, center.y + height/2.0,
+                                    width, height),
+                                None, None, *value as f32, min_val, max_val) as i32;
 }
 

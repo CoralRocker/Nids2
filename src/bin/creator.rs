@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
 
+use std::iter::*;
 use nids2::game::*;
+use nids2::util::*;
 use raylib::consts::KeyboardKey::*;
 use raylib::prelude::*;
 use std::ffi::{CStr, CString};
@@ -109,10 +111,55 @@ fn anim_frame(
     rld.draw_texture_rec(spritesheet, spr_rect, pos, Color::WHITE);
 }
 
+// Scales a rectangle to the given width and height. Preserves aspect
+// ratio. Scales width before height. Scales both larger and smaller.
+pub fn scale_to(src: &mut Rectangle, width: f32, height: f32) {
+    if src.width < width {
+        let factor = width / src.width;
+        src.x *= factor;
+        src.y *= factor;
+        src.height *= factor;
+        src.width = width;
+    }else if src.height < height {
+        let factor = height / src.height;
+        src.x *= factor;
+        src.y *= factor;
+        src.width *= factor;
+        src.height = height;
+    }
+    
+    if src.width > width {
+        let factor = width / src.width;
+        src.x *= factor;
+        src.y *= factor;
+        src.height *= factor;
+        src.width = width;
+    }else if src.height > height {
+        let factor = height / src.height;
+        src.x *= factor;
+        src.y *= factor;
+        src.width *= factor;
+        src.height = height;
+    }
+    
+}
+
 #[derive(Debug)]
 struct CreatedObject {
     conf: ObjectConfig,
     image_name: String,
+}
+
+fn find_obj(name: &str, 
+            vec: &Vec<std::sync::Arc<(Texture2D, ObjectConfig)>>
+) -> Option<std::sync::Arc<(Texture2D, ObjectConfig)>> {
+    for tup in vec.iter() {
+        let conf = &tup.1;
+        if name == conf.name.as_str() {
+            return Some(tup.clone());
+        }
+    }
+    None
 }
 
 fn main() {
@@ -127,9 +174,14 @@ fn main() {
 
     handle.set_target_fps(60);
     handle.gui_load_style(Some(rstr!("candy.rgs")));
+    
+    nids2::game::init(&mut handle, &thread);
+    color_init(&mut handle);
 
     let mut object_mode = false;
     let mut bounding_box_mode = false;
+    let mut obj_preview_mode = false;
+
     let mut spritesheet = handle
         .load_texture_from_image(&thread, &Image::gen_image_color(1, 1, Color::WHITE))
         .expect("Fucky");
@@ -137,6 +189,8 @@ fn main() {
         conf: ObjectConfig::new(),
         image_name: String::new(),
     };
+    
+    let all_obj = get_all_objects();
 
     let mut side_options_str: CString = CString::new("").expect("Uhhhhhhhh oops");
     let mut subimage_options_str: CString = CString::new("").expect("Uhhhhhhhh oops");
@@ -146,6 +200,7 @@ fn main() {
     let mut side = 0;
     let mut anim_speed = 0;
     let mut cur_subimg = 0;
+    let mut edit_object = 0;
     let mut err: Option<(String, i32)> = None;
 
     let font = handle
@@ -201,27 +256,89 @@ fn main() {
 
         d.clear_background(Color::SKYBLUE);
         if !object_mode {
-            draw_text_centered(
-                &mut d,
-                // &font,
-                "Drop a PNG File to start creating an object!",
-                scr_w / 2,
-                scr_h / 2,
-                24,
-                Color::BLACK,
-            );
+            let menu_rect = rrect(16, 16, scr_w - 32, scr_h - 32);
+            draw_text_centered(&mut d,
+                               &font,
+                               "Drag and Drop a PNG file onto the window to create a new object!",
+                               scr_w/2,
+                               64,
+                               24,
+                               Color::BLACK
+                               );
+            draw_text_centered(&mut d,
+                               &font,
+                               "Or, Select An Existing Object to Edit Using Your Mouse!",
+                                scr_w/2,
+                                96,
+                                24,
+                                Color::BLACK
+                                );
+            
+            let mut items = std::fs::read_dir("obj/").expect("Unable to read obj/")
+                                     .map(|res| res.map(|e| String::from((e.path().strip_prefix(std::path::Path::new("obj/")).unwrap()).to_str().unwrap())))
+                                     .collect::<Result<Vec<_>, std::io::Error>>()
+                                     .expect("Unable to collect obj iter");
+            items.sort();
+
+            if ds_scroll_selection(&mut d,
+                                   &font,
+                                   rrect(menu_rect.x + 16.0,
+                                         128.0,
+                                         240,
+                                         (menu_rect.y + menu_rect.height) - 128.0),
+                                   &items,
+                                   &mut edit_object
+            ) {
+                obj_preview_mode = true;
+            }
+            
+            if obj_preview_mode {
+                let obj = find_obj(items.get(edit_object as usize).unwrap(), &all_obj).unwrap();
+                let mut image_rect = rrect(0,0,obj.1.dim.0, obj.1.dim.1);
+                let src_rect = image_rect;
+                scale_to(&mut image_rect, 320.0, 320.0);
+                image_rect.x = menu_rect.x + 259.0;
+                image_rect.y = 128.0;
+
+                ds_rounded_rectangle_lines(&mut d,
+                                           image_rect,
+                                           0.05,
+                                           16,
+                                           3);
+                d.draw_texture_pro(&obj.0,
+                                   src_rect,
+                                   image_rect,
+                                   rvec2(0,0),
+                                   0.0,
+                                   Color::WHITE
+                                   );
+
+                                    
+            }
+
+
+            // draw_text_centered(
+            //     &mut d,
+            //     &font,
+            //     "Drop a PNG File to start creating an object!",
+            //     scr_w / 2,
+            //     scr_h / 2,
+            //     24,
+            //     Color::BLACK,
+            // );
         } else {
             // draw texture appropriately to fit on screen.
             let mut sprsht_rec = rrect(0, 0, spritesheet.width(), spritesheet.height());
             let src_rect = sprsht_rec;
-            if src_rect.width > (scr_w / 2) as f32 {
-                sprsht_rec.height *= (scr_w / 2) as f32 / sprsht_rec.width;
-                sprsht_rec.width = (scr_w / 2) as f32;
-            }
-            if sprsht_rec.height > (scr_h / 2) as f32 {
-                sprsht_rec.width *= (scr_h / 2) as f32 / sprsht_rec.height;
-                sprsht_rec.height = (scr_h / 2) as f32;
-            }
+            scale_to(&mut sprsht_rec, (scr_w / 2) as f32, (scr_h / 2) as f32);
+            // if src_rect.width > (scr_w / 2) as f32 {
+            //     sprsht_rec.height *= (scr_w / 2) as f32 / sprsht_rec.width;
+            //     sprsht_rec.width = (scr_w / 2) as f32;
+            // }
+            // if sprsht_rec.height > (scr_h / 2) as f32 {
+            //     sprsht_rec.width *= (scr_h / 2) as f32 / sprsht_rec.height;
+            //     sprsht_rec.height = (scr_h / 2) as f32;
+            // }
             d.draw_texture_pro(
                 &spritesheet,
                 src_rect,
@@ -302,7 +419,7 @@ fn main() {
                 anim_frame(&mut d, &spritesheet, spr_w, spr_h, side, cur_subimg, pos);
             }
 
-            if d.gui_button(
+            if !bounding_box_mode && d.gui_button(
                 rrect(scr_w / 2, 386, scr_w / 2, 64),
                 Some(CString::new("Save and Exit").unwrap().as_c_str()),
             ) {
@@ -349,23 +466,26 @@ fn main() {
 
                 let color = Color::DARKPURPLE.fade(fade);
                 if frame_count < max_frame {
-                    draw_text_centered(&mut d, /* &font, */ e, scr_w / 4 * 3, 450, 24, color);
+                    draw_text_centered(&mut d, &font, e, scr_w / 4 * 3, 450, 24, color);
                 } else {
                     err = None;
                 }
             }
 
-            if d.gui_button(
+            if !bounding_box_mode && d.gui_button(
                 rrect(scr_w / 2, 322, scr_w / 2, 64),
                 Some(CString::new("Create Bounding Box").unwrap().as_c_str()),
             ) {
                 bounding_box_mode = true;
                 let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
                 let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
-                obj.conf.default_b_box = Some((0, 0, 1, 1));
-                obj.conf.dim = (spr_w, spr_h);
-                obj.conf.sides = *side_options.get(side as usize).unwrap();
-                obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
+                
+                if obj.conf.default_b_box.is_none() {
+                    obj.conf.default_b_box = Some((0, 0, 1, 1));
+                    obj.conf.dim = (spr_w, spr_h);
+                    obj.conf.sides = *side_options.get(side as usize).unwrap();
+                    obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
+                }
             }
             if bounding_box_mode {
                 let mode_rect = rrect(
@@ -420,48 +540,53 @@ fn main() {
                     0.0,
                     Color::WHITE,
                 );
-
-                *x = d.gui_slider(
-                    rrect(mode_rect.x + mode_rect.width * (1.0/8.0), mode_rect.y + mode_rect.height * (1.0/3.0), 160, 15),
-                    Some(rstr!("Modify BBox X")),
-                    None,
-                    *x as f32,
-                    0.0,
-                    src_rect.width - 1.0,
-                ) as i32;
-                *y = d.gui_slider(
-                    rrect(mode_rect.x + mode_rect.width * (1.0/8.0), mode_rect.y + mode_rect.height * (2.0/3.0), 160, 15),
-                    Some(rstr!("Modify BBox Y")),
-                    None,
-                    *y as f32,
-                    0.0,
-                    src_rect.height - 1.0,
-                ) as i32;
-                *width = d.gui_slider(
-                    rrect(mode_rect.x + mode_rect.width * (6.0/8.0), mode_rect.y + mode_rect.height * (1.0/3.0), 160, 15),
-                    Some(rstr!("Modify BBox WIDTH")),
-                    None,
-                    *width as f32,
-                    0.0,
-                    src_rect.width - *x as f32,
-                ) as i32;
-                *height = d.gui_slider(
-                    rrect(mode_rect.x + mode_rect.width * (6.0/8.0), mode_rect.y + mode_rect.height * (2.0/3.0), 160, 15),
-                    Some(rstr!("Modify BBox HEIGHT")),
-                    None,
-                    *height as f32,
-                    0.0,
-                    src_rect.height - *y as f32,
-                ) as i32;
+                
+                ds_draw_slider_centered(&mut d,
+                                        &font,
+                                        "Modify BBox X",
+                                        rvec2(mode_rect.x + mode_rect.width * (2.0/8.0),
+                                              mode_rect.y + mode_rect.height * (1.0/3.0)),
+                                        mode_rect.width/4.0, 20.0,
+                                        x, 0.0, src_rect.width - *width as f32, true);
+                ds_draw_slider_centered(&mut d,
+                                        &font,
+                                        "Modify BBox Y",
+                                        rvec2(mode_rect.x + mode_rect.width * (2.0/8.0),
+                                              mode_rect.y + mode_rect.height * (2.0/3.0)),
+                                        mode_rect.width/4.0, 20.0,
+                                        y, 0.0, src_rect.height - *height as f32, true);
+                ds_draw_slider_centered(&mut d,
+                                        &font,
+                                        "Modify BBOx WIDTH",
+                                        rvec2(mode_rect.x + mode_rect.width * (6.0/8.0),
+                                              mode_rect.y + mode_rect.height * (1.0/3.0)),
+                                        mode_rect.width/4.0, 20.0,
+                                        width, 0.0, src_rect.width - *x as f32 + 1.0, true);
+                ds_draw_slider_centered(&mut d,
+                                        &font,
+                                        "Modify BBOx HEIGHT",
+                                        rvec2(mode_rect.x + mode_rect.width * (6.0/8.0),
+                                              mode_rect.y + mode_rect.height * (2.0/3.0)),
+                                        mode_rect.width/4.0, 20.0,
+                                        height, 0.0, src_rect.height - *y as f32 + 1.0, true);
 
                 draw_text_centered(
                     &mut d,
+                    &font,
                     format!("({}, {}) {}px X {}px", *x, *y, *width, *height).as_str(),
                     (mode_rect.x + mode_rect.width / 2.0) as i32,
                     (mode_rect.y + 45.0) as i32,
                     24,
                     Color::BLACK,
                 );
+                
+                let (exit_bbox, _) = ds_rounded_button_centered(&mut d,
+                                        &font,
+                                        rrect(mode_rect.x + mode_rect.width/2.0,
+                                              mode_rect.y + mode_rect.height*0.875,
+                                              120,
+                                              30),
+                                        Some("Exit BBox Editor"));
 
                 let mut bbox = rrect(*x, *y, *width, *height);
                 let factor = spr_rect.width / src_rect.width;
@@ -472,6 +597,10 @@ fn main() {
                 bbox.width *= factor;
                 bbox.height *= factor;
                 d.draw_rectangle_lines_ex(bbox, 1, Color::BLACK);
+                
+                if exit_bbox {
+                    bounding_box_mode = false;
+                }
             }
         }
     }
