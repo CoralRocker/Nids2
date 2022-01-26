@@ -2,9 +2,9 @@
 // Use for system-level things such as statics, unsafe code, and memory loading at
 // the start of the game. Should not deal with high-level objects and no drawing.
 
-
 #![allow(dead_code, unused_imports, unused_variables, non_snake_case)]
 
+use crate::object::*;
 use crate::*;
 use lazy_static;
 use raylib::consts::KeyboardKey::*;
@@ -20,7 +20,6 @@ use std::mem::drop;
 use std::rc;
 use std::sync::{atomic, Arc, Mutex};
 use toml;
-use crate::object::*;
 
 /**
  * Holds the data for an object type. Note that this cannot create an instance of an object; it just holds the default configuration and spritesheet information.

@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 
-use std::iter::*;
 use nids2::game::*;
 use nids2::util::*;
 use raylib::consts::KeyboardKey::*;
@@ -8,6 +7,7 @@ use raylib::prelude::*;
 use std::ffi::{CStr, CString};
 use std::fs;
 use std::io::prelude::*;
+use std::iter::*;
 use std::ops::DerefMut;
 
 fn get_next_id() -> i32 {
@@ -116,33 +116,29 @@ fn anim_frame(
 pub fn scale_to(src: &mut Rectangle, width: f32, height: f32) {
     if src.width < width {
         let factor = width / src.width;
-        src.x *= factor;
-        src.y *= factor;
         src.height *= factor;
         src.width = width;
-    }else if src.height < height {
+    } else if src.height < height {
         let factor = height / src.height;
-        src.x *= factor;
-        src.y *= factor;
         src.width *= factor;
         src.height = height;
     }
-    
+
     if src.width > width {
         let factor = width / src.width;
-        src.x *= factor;
-        src.y *= factor;
         src.height *= factor;
         src.width = width;
-    }else if src.height > height {
+    } else if src.height > height {
         let factor = height / src.height;
-        src.x *= factor;
-        src.y *= factor;
         src.width *= factor;
         src.height = height;
     }
-    
 }
+
+pub fn center_in(src: &mut Rectangle, center: Rectangle) {
+    src.x = center.x + center.width/2.0 - src.width/2.0;
+    src.y = center.y + center.height/2.0 - src.height/2.0;
+}   
 
 #[derive(Debug)]
 struct CreatedObject {
@@ -150,8 +146,9 @@ struct CreatedObject {
     image_name: String,
 }
 
-fn find_obj(name: &str, 
-            vec: &Vec<std::sync::Arc<(Texture2D, ObjectConfig)>>
+fn find_obj(
+    name: &str,
+    vec: &Vec<std::sync::Arc<(Texture2D, ObjectConfig)>>,
 ) -> Option<std::sync::Arc<(Texture2D, ObjectConfig)>> {
     for tup in vec.iter() {
         let conf = &tup.1;
@@ -174,7 +171,7 @@ fn main() {
 
     handle.set_target_fps(60);
     handle.gui_load_style(Some(rstr!("candy.rgs")));
-    
+
     nids2::game::init(&mut handle, &thread);
     color_init(&mut handle);
 
@@ -189,7 +186,7 @@ fn main() {
         conf: ObjectConfig::new(),
         image_name: String::new(),
     };
-    
+
     let all_obj = get_all_objects();
 
     let mut side_options_str: CString = CString::new("").expect("Uhhhhhhhh oops");
@@ -201,6 +198,7 @@ fn main() {
     let mut anim_speed = 0;
     let mut cur_subimg = 0;
     let mut edit_object = 0;
+    let mut top_item_index = 0;
     let mut err: Option<(String, i32)> = None;
 
     let font = handle
@@ -257,65 +255,88 @@ fn main() {
         d.clear_background(Color::SKYBLUE);
         if !object_mode {
             let menu_rect = rrect(16, 16, scr_w - 32, scr_h - 32);
-            draw_text_centered(&mut d,
-                               &font,
-                               "Drag and Drop a PNG file onto the window to create a new object!",
-                               scr_w/2,
-                               64,
-                               24,
-                               Color::BLACK
-                               );
-            draw_text_centered(&mut d,
-                               &font,
-                               "Or, Select An Existing Object to Edit Using Your Mouse!",
-                                scr_w/2,
-                                96,
-                                24,
-                                Color::BLACK
-                                );
-            
-            let mut items = std::fs::read_dir("obj/").expect("Unable to read obj/")
-                                     .map(|res| res.map(|e| String::from((e.path().strip_prefix(std::path::Path::new("obj/")).unwrap()).to_str().unwrap())))
-                                     .collect::<Result<Vec<_>, std::io::Error>>()
-                                     .expect("Unable to collect obj iter");
+            draw_text_centered(
+                &mut d,
+                &font,
+                "Drag and Drop a PNG file onto the window to create a new object!",
+                scr_w / 2,
+                64,
+                24,
+                Color::BLACK,
+            );
+            draw_text_centered(
+                &mut d,
+                &font,
+                "Or, Select An Existing Object to Edit Using Your Mouse!",
+                scr_w / 2,
+                96,
+                24,
+                Color::BLACK,
+            );
+
+            let mut items = std::fs::read_dir("obj/")
+                .expect("Unable to read obj/")
+                .map(|res| {
+                    res.map(|e| {
+                        String::from(
+                            (e.path().strip_prefix(std::path::Path::new("obj/")).unwrap())
+                                .to_str()
+                                .unwrap(),
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, std::io::Error>>()
+                .expect("Unable to collect obj iter");
             items.sort();
 
-            if ds_scroll_selection(&mut d,
-                                   &font,
-                                   rrect(menu_rect.x + 16.0,
-                                         128.0,
-                                         240,
-                                         (menu_rect.y + menu_rect.height) - 128.0),
-                                   &items,
-                                   &mut edit_object
+            if ds_scroll_selection(
+                &mut d,
+                &font,
+                rrect(
+                    menu_rect.x + 16.0,
+                    128.0,
+                    240,
+                    (menu_rect.y + menu_rect.height) - 128.0,
+                ),
+                &items,
+                &mut edit_object,
+                &mut top_item_index,
             ) {
                 obj_preview_mode = true;
             }
-            
+
             if obj_preview_mode {
-                let obj = find_obj(items.get(edit_object as usize).unwrap(), &all_obj).unwrap();
-                let mut image_rect = rrect(0,0,obj.1.dim.0, obj.1.dim.1);
-                let src_rect = image_rect;
-                scale_to(&mut image_rect, 320.0, 320.0);
-                image_rect.x = menu_rect.x + 259.0;
-                image_rect.y = 128.0;
 
-                ds_rounded_rectangle_lines(&mut d,
-                                           image_rect,
-                                           0.05,
-                                           16,
-                                           3);
-                d.draw_texture_pro(&obj.0,
-                                   src_rect,
-                                   image_rect,
-                                   rvec2(0,0),
-                                   0.0,
-                                   Color::WHITE
-                                   );
+                if let Some(obj) = find_obj(items.get(edit_object as usize).unwrap(), &all_obj) {
+                    let mut image_rect = rrect(0, 0, obj.1.dim.0, obj.1.dim.1);
+                    let src_rect = image_rect;
+                    let frame_rect = rrect(menu_rect.x + 260.0, 128, 320, 320);
+                    scale_to(&mut image_rect, 320.0, 320.0);
+                    center_in(&mut image_rect, frame_rect); 
 
-                                    
+
+                    ds_rounded_rectangle_lines(&mut d, frame_rect, 0.05, 16, 3);
+                    d.draw_texture_pro(&obj.0, src_rect, image_rect, rvec2(0, 0), 0.0, Color::WHITE);
+                    draw_text_centered(&mut d,
+                                       &font,
+                                       "Image Is Scaled To Fit In The Frame",
+                                       frame_rect.x as i32 + 160,
+                                       (frame_rect.y + frame_rect.height) as i32 + 32,
+                                       16,
+                                       Color::BLACK,
+                    );
+                    draw_text_centered(&mut d,
+                                       &font,
+                                       "NOT TO SCALE",
+                                       frame_rect.x as i32 + 160,
+                                       (frame_rect.y + frame_rect.height) as i32 + 12,
+                                       16,
+                                       Color::BLACK,
+                    );
+
+                     
+                }
             }
-
 
             // draw_text_centered(
             //     &mut d,
@@ -419,10 +440,12 @@ fn main() {
                 anim_frame(&mut d, &spritesheet, spr_w, spr_h, side, cur_subimg, pos);
             }
 
-            if !bounding_box_mode && d.gui_button(
-                rrect(scr_w / 2, 386, scr_w / 2, 64),
-                Some(CString::new("Save and Exit").unwrap().as_c_str()),
-            ) {
+            if !bounding_box_mode
+                && d.gui_button(
+                    rrect(scr_w / 2, 386, scr_w / 2, 64),
+                    Some(CString::new("Save and Exit").unwrap().as_c_str()),
+                )
+            {
                 let path = format!("obj/{}", obj.conf.name);
                 if fs::read_dir(path).is_err() {
                     obj.conf.id = get_next_id();
@@ -472,14 +495,16 @@ fn main() {
                 }
             }
 
-            if !bounding_box_mode && d.gui_button(
-                rrect(scr_w / 2, 322, scr_w / 2, 64),
-                Some(CString::new("Create Bounding Box").unwrap().as_c_str()),
-            ) {
+            if !bounding_box_mode
+                && d.gui_button(
+                    rrect(scr_w / 2, 322, scr_w / 2, 64),
+                    Some(CString::new("Create Bounding Box").unwrap().as_c_str()),
+                )
+            {
                 bounding_box_mode = true;
                 let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
                 let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
-                
+
                 if obj.conf.default_b_box.is_none() {
                     obj.conf.default_b_box = Some((0, 0, 1, 1));
                     obj.conf.dim = (spr_w, spr_h);
@@ -540,35 +565,67 @@ fn main() {
                     0.0,
                     Color::WHITE,
                 );
-                
-                ds_draw_slider_centered(&mut d,
-                                        &font,
-                                        "Modify BBox X",
-                                        rvec2(mode_rect.x + mode_rect.width * (2.0/8.0),
-                                              mode_rect.y + mode_rect.height * (1.0/3.0)),
-                                        mode_rect.width/4.0, 20.0,
-                                        x, 0.0, src_rect.width - *width as f32, true);
-                ds_draw_slider_centered(&mut d,
-                                        &font,
-                                        "Modify BBox Y",
-                                        rvec2(mode_rect.x + mode_rect.width * (2.0/8.0),
-                                              mode_rect.y + mode_rect.height * (2.0/3.0)),
-                                        mode_rect.width/4.0, 20.0,
-                                        y, 0.0, src_rect.height - *height as f32, true);
-                ds_draw_slider_centered(&mut d,
-                                        &font,
-                                        "Modify BBOx WIDTH",
-                                        rvec2(mode_rect.x + mode_rect.width * (6.0/8.0),
-                                              mode_rect.y + mode_rect.height * (1.0/3.0)),
-                                        mode_rect.width/4.0, 20.0,
-                                        width, 0.0, src_rect.width - *x as f32 + 1.0, true);
-                ds_draw_slider_centered(&mut d,
-                                        &font,
-                                        "Modify BBOx HEIGHT",
-                                        rvec2(mode_rect.x + mode_rect.width * (6.0/8.0),
-                                              mode_rect.y + mode_rect.height * (2.0/3.0)),
-                                        mode_rect.width/4.0, 20.0,
-                                        height, 0.0, src_rect.height - *y as f32 + 1.0, true);
+
+                ds_draw_slider_centered(
+                    &mut d,
+                    &font,
+                    "Modify BBox X",
+                    rvec2(
+                        mode_rect.x + mode_rect.width * (2.0 / 8.0),
+                        mode_rect.y + mode_rect.height * (1.0 / 3.0),
+                    ),
+                    mode_rect.width / 4.0,
+                    20.0,
+                    x,
+                    0.0,
+                    src_rect.width - *width as f32,
+                    true,
+                );
+                ds_draw_slider_centered(
+                    &mut d,
+                    &font,
+                    "Modify BBox Y",
+                    rvec2(
+                        mode_rect.x + mode_rect.width * (2.0 / 8.0),
+                        mode_rect.y + mode_rect.height * (2.0 / 3.0),
+                    ),
+                    mode_rect.width / 4.0,
+                    20.0,
+                    y,
+                    0.0,
+                    src_rect.height - *height as f32,
+                    true,
+                );
+                ds_draw_slider_centered(
+                    &mut d,
+                    &font,
+                    "Modify BBOx WIDTH",
+                    rvec2(
+                        mode_rect.x + mode_rect.width * (6.0 / 8.0),
+                        mode_rect.y + mode_rect.height * (1.0 / 3.0),
+                    ),
+                    mode_rect.width / 4.0,
+                    20.0,
+                    width,
+                    0.0,
+                    src_rect.width - *x as f32 + 1.0,
+                    true,
+                );
+                ds_draw_slider_centered(
+                    &mut d,
+                    &font,
+                    "Modify BBOx HEIGHT",
+                    rvec2(
+                        mode_rect.x + mode_rect.width * (6.0 / 8.0),
+                        mode_rect.y + mode_rect.height * (2.0 / 3.0),
+                    ),
+                    mode_rect.width / 4.0,
+                    20.0,
+                    height,
+                    0.0,
+                    src_rect.height - *y as f32 + 1.0,
+                    true,
+                );
 
                 draw_text_centered(
                     &mut d,
@@ -579,14 +636,18 @@ fn main() {
                     24,
                     Color::BLACK,
                 );
-                
-                let (exit_bbox, _) = ds_rounded_button_centered(&mut d,
-                                        &font,
-                                        rrect(mode_rect.x + mode_rect.width/2.0,
-                                              mode_rect.y + mode_rect.height*0.875,
-                                              120,
-                                              30),
-                                        Some("Exit BBox Editor"));
+
+                let (exit_bbox, _) = ds_rounded_button_centered(
+                    &mut d,
+                    &font,
+                    rrect(
+                        mode_rect.x + mode_rect.width / 2.0,
+                        mode_rect.y + mode_rect.height * 0.875,
+                        120,
+                        30,
+                    ),
+                    Some("Exit BBox Editor"),
+                );
 
                 let mut bbox = rrect(*x, *y, *width, *height);
                 let factor = spr_rect.width / src_rect.width;
@@ -597,7 +658,7 @@ fn main() {
                 bbox.width *= factor;
                 bbox.height *= factor;
                 d.draw_rectangle_lines_ex(bbox, 1, Color::BLACK);
-                
+
                 if exit_bbox {
                     bounding_box_mode = false;
                 }

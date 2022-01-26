@@ -73,6 +73,9 @@ fn main() {
         scr_h,
     )));
     util::insert_object(&mut objects, naomi.clone());
+    
+    rl.set_exit_key(None);
+
 
     while !rl.window_should_close() {
         frame_no += 1;
