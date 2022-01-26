@@ -2,16 +2,16 @@
 // Use for functions dealing with objects and displaying textures and menus.
 // Not for memory allocation or system-level things.
 
-use raylib::prelude::*;
-use std::cell::RefCell;
-use std::rc;
 use crate::game::*;
 use crate::object::*;
-use raylib::ffi::Rectangle as ffirect;
-use std::ffi::CString;
-use std::sync::Arc;
-use std::collections::HashMap;
 use raylib::consts::KeyboardKey::*;
+use raylib::ffi::Rectangle as ffirect;
+use raylib::prelude::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::ffi::CString;
+use std::rc;
+use std::sync::Arc;
 
 /// Get Vector of all unique categories that contain objects.
 pub fn get_all_types() -> Vec<String> {
@@ -22,13 +22,13 @@ pub fn get_all_types() -> Vec<String> {
         .expect("Unable to lock LOADED_TEXTURES mutex")
         .iter()
     {
-        let item = item.1;
-        let item = &item.1;
+        let item = item.1; // get Value from (K, V) pair
+        let item = &item.1; // get &ObjectConfig from Arc<(Texture2D, ObjectConfig>
         result.push(item.category.clone());
     }
 
     result.sort_unstable();
-    result.dedup();
+    result.dedup(); // Remove consecutive duplicates from sorted types vector.
 
     result
 }
@@ -77,18 +77,14 @@ pub fn advanced_input(
     font: impl AsRef<raylib::ffi::Font>,
     bounds: Rectangle,
     text: &mut String,
-    title: &String,
+    title: &str,
 ) {
-    static mut UPPERCASE: bool = false;
+    static mut UPPERCASE: bool = false; // Used to store shift keys for next run of function
 
     let spacing = 1.0;
     let fontsize = 20.0;
-    // let txt_width = measure_text_ex(&font, text.as_str(), fontsize, spacing);
-
-    // let disp = Some(CString::new(text.as_bytes()).expect("Failed to convert to CString!"));
-    // let disp = disp.as_deref();
-    let title = Some(CString::new(title.as_bytes()).expect("Failed to convert to CString!"));
-    let title = title.as_deref();
+    let title = Some(CString::new(title).expect("Failed to convert to CString!"));
+    let title = title.as_deref(); // Get Option<&CStr> from Option<CString>
     let t_bound = Rectangle {
         x: bounds.x,
         y: bounds.y + 8.0,
@@ -96,6 +92,7 @@ pub fn advanced_input(
         height: bounds.height - 8.0,
     };
     rld.gui_group_box(t_bound, title);
+    // Draw pre-existing text
     rld.draw_text_ex(
         &font,
         text.as_str(),
@@ -200,7 +197,7 @@ pub fn draw_text_centered(
     );
 }
 
-
+// Return largest of `a` and `b`.
 pub fn max(a: i32, b: i32) -> i32 {
     if a > b {
         a
@@ -229,6 +226,7 @@ pub fn is_object_correctly_placed(
         .get(obj.borrow().get_depth() as usize)
         .expect("Object depth is invalid!");
 
+    // .any checks if anything in collection returns true for the predicate.
     iter.iter()
         .any(|x| -> bool { x.borrow().get_id() == obj.borrow().get_id() })
 }
@@ -399,6 +397,7 @@ pub fn ds_scroll_selection(
     rec: Rectangle,
     selections: &Vec<String>,
     selection: &mut i32,
+    top_item_index: &mut i32
 ) -> bool {
     let active = rec.check_collision_point_rec(rd.get_mouse_position());
     let border_w = mutex_get(&BORDER_WIDTH);
@@ -410,41 +409,48 @@ pub fn ds_scroll_selection(
     let num_items = (rec.height - 12.0) as i32 / item_rect.height as i32;
 
     // Scroll Selection Logic
-    if *selection >= selections.len() as i32 {
-        *selection = selections.len() as i32 - num_items;
+    if *top_item_index >= selections.len() as i32 {
+        *top_item_index = selections.len() as i32 - num_items;
     }
-    if *selection < 0 {
-        *selection = 0;
+    if *top_item_index < 0 {
+        *top_item_index = 0;
     }
 
     for n in 0..num_items {
         item_rect.y += item_rect.height + 2.0;
         let (cx, cy) = rect_midpoint(item_rect);
-        let txt = selections.get((n + *selection) as usize);
+        let txt = selections.get((n + *top_item_index) as usize);
         if let Some(t) = txt {
             draw_text_centered(rd, font, t, cx, cy, 16, Color::BLACK);
         }
         if item_rect.check_collision_point_rec(rd.get_mouse_position()) {
-            rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::WHITE.fade(0.40));
+            if txt.is_some() {
+                rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::WHITE.fade(0.40));
+            }
+
             if rd.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
-                *selection += n;
-                return true;
+                if *top_item_index + n < selections.len() as i32 {
+                    *selection = n + *top_item_index;
+                    return true;
+                }
             }
         }
     }
 
     if active {
-        *selection += -rd.get_mouse_wheel_move() as i32;
-        if *selection < 0 {
-            *selection = 0;
-        } else if *selection >= selections.len() as i32 {
-            *selection = selections.len() as i32 - 1;
+        *top_item_index += -rd.get_mouse_wheel_move() as i32;
+        if *top_item_index < 0 {
+            *top_item_index = 0;
+        } else if *top_item_index >= selections.len() as i32 {
+            *top_item_index = selections.len() as i32 - 1;
         }
     }
 
     false
 }
 
+/// Draw a slider width a given width and height, centered w.r.t. X and Y axes and
+/// With the title text above it.
 pub fn ds_draw_slider_centered(
     d: &mut RaylibDrawHandle,
     font: &Font,
@@ -455,16 +461,33 @@ pub fn ds_draw_slider_centered(
     value: &mut i32,
     min_val: f32,
     max_val: f32,
-    center_title: bool
+    center_title: bool,
 ) {
     if center_title {
-        draw_text_centered(d, font, title, center.x as i32, (center.y - height/2.0) as i32, 16, Color::BLACK);
-    }else{
+        draw_text_centered(
+            d,
+            font,
+            title,
+            center.x as i32,
+            (center.y - height / 2.0) as i32,
+            16,
+            Color::BLACK,
+        );
+    } else {
         d.draw_text(title, center.x as i32, center.x as i32, 16, Color::BLACK);
     }
 
-    *value = d.gui_slider_bar(rrect(center.x - width/2.0, center.y + height/2.0,
-                                    width, height),
-                                None, None, *value as f32, min_val, max_val) as i32;
+    *value = d.gui_slider_bar(
+        rrect(
+            center.x - width / 2.0,
+            center.y + height / 2.0,
+            width,
+            height,
+        ),
+        None,
+        None,
+        *value as f32,
+        min_val,
+        max_val,
+    ) as i32;
 }
-
