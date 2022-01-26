@@ -159,6 +159,19 @@ fn find_obj(
     None
 }
 
+fn find_i32(
+    target: i32,
+    vec: &Vec<i32>
+) -> Option<usize> {
+    for i in 0..vec.len() {
+        if target == *vec.get(i).unwrap() {
+            return Some(i);
+        }
+    }
+
+    None
+}
+
 fn main() {
     let mut scr_w = 640;
     let mut scr_h = 480;
@@ -246,8 +259,8 @@ fn main() {
                 divisors_bar(spritesheet.width()).expect("Unable to get divisors for spritesheet");
             subimage_options_str = div_to_cstr(&subimage_options);
 
-            side = 0;
-            subimage = 0;
+            side = 0; // find_i32(obj.conf.sides, &side_options).unwrap_or(0);
+            subimage = 0; //find_i32(obj.conf.img_per_side, &subimage_options).unwrap_or(0);
             cur_subimg = 0;
             anim_speed = 0;
         }
@@ -397,9 +410,10 @@ fn main() {
                         subimage_options =
                             divisors_bar(spritesheet.width()).expect("Unable to get divisors for spritesheet");
                         subimage_options_str = div_to_cstr(&subimage_options);
+                        
 
-                        side = 0;
-                        subimage = 0;
+                        side = find_i32(obj.conf.sides, &side_options).unwrap_or(0) as i32;
+                        subimage = find_i32(obj.conf.img_per_side, &subimage_options).unwrap_or(0) as i32;
                         cur_subimg = 0;
                         anim_speed = 0;
                     }
