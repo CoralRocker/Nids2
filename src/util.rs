@@ -305,6 +305,7 @@ pub fn ds_rounded_button_centered(
     font: &Font,
     rec: impl Into<ffirect>,
     text: Option<&str>,
+    active: bool,
 ) -> (bool, Vector2) {
     let mut rec = {
         let rec = rec.into();
@@ -315,7 +316,7 @@ pub fn ds_rounded_button_centered(
     rec.x -= rec.width / 2.0;
     rec.y -= rec.height / 2.0;
 
-    ds_rounded_button(rd, font, rec, text)
+    ds_rounded_button(rd, font, rec, text, active)
 }
 
 /// Draws a rounded button with the default rgui style
@@ -324,6 +325,7 @@ pub fn ds_rounded_button(
     font: &Font,
     rec: impl Into<ffirect>,
     text: Option<&str>,
+    active: bool,
 ) -> (bool, Vector2) {
     let mut rec = {
         let rec = rec.into();
@@ -343,8 +345,11 @@ pub fn ds_rounded_button(
     let border_color: Color;
 
     let mut pressed = false;
-
-    if !rec.check_collision_point_rec(rd.get_mouse_position()) {
+    
+    if !active {
+        base_color = mutex_get(&BASE_COLOR_DISABLED);
+        border_color = mutex_get(&BORDER_COLOR_DISABLED);
+    } else if !rec.check_collision_point_rec(rd.get_mouse_position()) {
         base_color = mutex_get(&BASE_COLOR_NORMAL);
         border_color = mutex_get(&BORDER_COLOR_NORMAL);
     } else if rd.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
@@ -370,7 +375,7 @@ pub fn ds_rounded_button(
             (rec.x + rec.width / 2.0) as i32,
             (rec.y + rec.height / 2.0) as i32,
             16,
-            Color::BLACK,
+            if active { mutex_get(&TEXT_COLOR_DISABLED) } else { Color::BLACK },
         );
     }
 

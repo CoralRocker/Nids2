@@ -199,6 +199,8 @@ fn main() {
     let mut cur_subimg = 0;
     let mut edit_object = 0;
     let mut top_item_index = 0;
+    let mut preview_subimage = 0;
+
     let mut err: Option<(String, i32)> = None;
 
     let font = handle
@@ -309,7 +311,11 @@ fn main() {
 
                 if let Some(obj) = find_obj(items.get(edit_object as usize).unwrap(), &all_obj) {
                     let mut image_rect = rrect(0, 0, obj.1.dim.0, obj.1.dim.1);
-                    let src_rect = image_rect;
+                    let src_rect = rrect(preview_subimage as f32 * image_rect.width,
+                                         0,
+                                         image_rect.width,
+                                         image_rect.height);
+                    
                     let frame_rect = rrect(menu_rect.x + 260.0, 128, 320, 320);
                     scale_to(&mut image_rect, 320.0, 320.0);
                     center_in(&mut image_rect, frame_rect); 
@@ -333,33 +339,28 @@ fn main() {
                                        16,
                                        Color::BLACK,
                     );
-
+                    if ds_rounded_button_centered(&mut d,
+                                               &font,
+                                               rrect(frame_rect.x + (1.0/8.0)*frame_rect.width,
+                                                     frame_rect.y + frame_rect.height + 12.0,
+                                                     48,
+                                                     16),
+                                                Some("prev"),
+                                                obj.1.img_per_side > 1,
+                    ).0 {
+                        preview_subimage -= 1;
+                        if preview_subimage < 0 {
+                            preview_subimage = obj.1.img_per_side - 1;
+                        }
+                    }
                      
                 }
             }
-
-            // draw_text_centered(
-            //     &mut d,
-            //     &font,
-            //     "Drop a PNG File to start creating an object!",
-            //     scr_w / 2,
-            //     scr_h / 2,
-            //     24,
-            //     Color::BLACK,
-            // );
         } else {
             // draw texture appropriately to fit on screen.
             let mut sprsht_rec = rrect(0, 0, spritesheet.width(), spritesheet.height());
             let src_rect = sprsht_rec;
             scale_to(&mut sprsht_rec, (scr_w / 2) as f32, (scr_h / 2) as f32);
-            // if src_rect.width > (scr_w / 2) as f32 {
-            //     sprsht_rec.height *= (scr_w / 2) as f32 / sprsht_rec.width;
-            //     sprsht_rec.width = (scr_w / 2) as f32;
-            // }
-            // if sprsht_rec.height > (scr_h / 2) as f32 {
-            //     sprsht_rec.width *= (scr_h / 2) as f32 / sprsht_rec.height;
-            //     sprsht_rec.height = (scr_h / 2) as f32;
-            // }
             d.draw_texture_pro(
                 &spritesheet,
                 src_rect,
@@ -647,6 +648,7 @@ fn main() {
                         30,
                     ),
                     Some("Exit BBox Editor"),
+                    true,
                 );
 
                 let mut bbox = rrect(*x, *y, *width, *height);

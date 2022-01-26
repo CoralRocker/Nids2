@@ -147,6 +147,9 @@ lazy_static::lazy_static! {
     pub static ref BASE_COLOR_FOCUSED: Mutex<Color> = Mutex::new(Color::WHITE);
     pub static ref BORDER_COLOR_PRESSED: Mutex<Color> = Mutex::new(Color::WHITE);
     pub static ref BASE_COLOR_PRESSED: Mutex<Color> = Mutex::new(Color::WHITE);
+    pub static ref BASE_COLOR_DISABLED: Mutex<Color> = Mutex::new(Color::WHITE);
+    pub static ref BORDER_COLOR_DISABLED: Mutex<Color> = Mutex::new(Color::WHITE);
+    pub static ref TEXT_COLOR_DISABLED: Mutex<Color> = Mutex::new(Color::WHITE);
     pub static ref BORDER_WIDTH: Mutex<i32> = Mutex::new(0);
 }
 
@@ -207,5 +210,28 @@ pub fn color_init(rd: &mut RaylibHandle) {
     mutex_set(
         &BORDER_WIDTH,
         rd.gui_get_style(GuiControl::BUTTON, GuiControlProperty::BORDER_WIDTH as i32),
+    );
+
+    mutex_set(
+        &BORDER_COLOR_DISABLED,
+        Color::get_color(rd.gui_get_style(
+                GuiControl::BUTTON, 
+                GuiControlProperty::BORDER_COLOR_DISABLED as i32
+        )),
+    );
+
+    mutex_set(
+        &BASE_COLOR_DISABLED,
+        Color::get_color(rd.gui_get_style(
+                GuiControl::BUTTON, 
+                GuiControlProperty::BASE_COLOR_DISABLED as i32
+        )),
+    );
+    mutex_set(
+        &TEXT_COLOR_DISABLED,
+        Color::get_color(rd.gui_get_style(
+                GuiControl::BUTTON, 
+                GuiControlProperty::TEXT_COLOR_DISABLED as i32
+        )),
     );
 }

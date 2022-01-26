@@ -39,7 +39,9 @@ fn main() {
     let mut pause = false;
     let mut menu_selection = MenuSelections::MenuClosed;
     let mut opt_selection = 0;
+    let mut opt_scroll_index = 0;
     let mut selected_item = 0;
+    let mut selected_item_scroll_index = 0;
 
     let types_vec = util::get_all_types();
     let sorted_objs = util::get_all_objects_sorted();
@@ -130,6 +132,7 @@ fn main() {
                     menu_height / 2,
                 ),
                 Some("Select Furniture"),
+                true,
             );
             let (opt_button, opt_vec) = util::ds_rounded_button_centered(
                 &mut d,
@@ -141,6 +144,7 @@ fn main() {
                     menu_height / 2,
                 ),
                 Some("Options"),
+                true,
             );
 
             let (exit_button, exit_vec) = util::ds_rounded_button_centered(
@@ -153,6 +157,7 @@ fn main() {
                     menu_height / 2,
                 ),
                 Some("Save and Exit"),
+                true,
             );
 
             if furn_button {
@@ -182,6 +187,7 @@ fn main() {
                         ),
                         &types_vec,
                         &mut opt_selection,
+                        &mut opt_scroll_index, 
                     ) {
                         menu_selection = MenuSelections::ItemSelect;
                     }
@@ -208,6 +214,7 @@ fn main() {
                         ),
                         &name_vec,
                         &mut selected_item,
+                        &mut selected_item_scroll_index,
                     ) {
                         naomi.borrow_mut().select_obj_type =
                             vec_ref.get(selected_item as usize).unwrap().1.id;
