@@ -75,9 +75,8 @@ fn main() {
         scr_h,
     )));
     util::insert_object(&mut objects, naomi.clone());
-    
-    rl.set_exit_key(None);
 
+    rl.set_exit_key(None);
 
     while !rl.window_should_close() {
         frame_no += 1;
@@ -187,7 +186,7 @@ fn main() {
                         ),
                         &types_vec,
                         &mut opt_selection,
-                        &mut opt_scroll_index, 
+                        &mut opt_scroll_index,
                     ) {
                         menu_selection = MenuSelections::ItemSelect;
                     }

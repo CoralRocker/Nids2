@@ -344,7 +344,7 @@ pub fn ds_rounded_button(
     let border_color: Color;
 
     let mut pressed = false;
-    
+
     if !active {
         base_color = mutex_get(&BASE_COLOR_DISABLED);
         border_color = mutex_get(&BORDER_COLOR_DISABLED);
@@ -374,7 +374,11 @@ pub fn ds_rounded_button(
             (rec.x + rec.width / 2.0) as i32,
             (rec.y + rec.height / 2.0) as i32,
             16,
-            if active { mutex_get(&TEXT_COLOR_DISABLED) } else { Color::BLACK },
+            if active {
+                mutex_get(&TEXT_COLOR_DISABLED)
+            } else {
+                Color::BLACK
+            },
         );
     }
 
@@ -395,7 +399,7 @@ pub fn rect_midpoint(rec: Rectangle) -> (i32, i32) {
 }
 
 /// A Scrollable selection box with mouse control
-pub fn ds_scroll_selection (
+pub fn ds_scroll_selection(
     rd: &mut RaylibDrawHandle,
     font: &Font,
     rec: Rectangle,
@@ -415,7 +419,6 @@ pub fn ds_scroll_selection_ex(
     selection: &mut i32,
     top_item_index: &mut i32,
     fontsize: i32,
-    
 ) -> bool {
     let active = rec.check_collision_point_rec(rd.get_mouse_position());
     let border_w = mutex_get(&BORDER_WIDTH);
@@ -441,8 +444,8 @@ pub fn ds_scroll_selection_ex(
         if let Some(t) = txt {
             draw_text_centered(rd, font, t, cx, cy, fontsize, Color::BLACK);
         }
-        if n+*top_item_index == *selection {
-                rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::GRAY.fade(0.40));
+        if n + *top_item_index == *selection {
+            rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::GRAY.fade(0.40));
         }
         if item_rect.check_collision_point_rec(rd.get_mouse_position()) {
             if txt.is_some() {
@@ -511,4 +514,79 @@ pub fn ds_draw_slider_centered(
         min_val,
         max_val,
     ) as i32;
+}
+
+/// Draw a toggle with the default style, rounded corners, and centered at the position given by
+/// the rec's x and y. 
+pub fn ds_draw_toggle_rounded_centered(
+    d: &mut RaylibDrawHandle,
+    font: &Font,
+    text: Option<&str>,
+    rec: Rectangle,
+    val: &mut bool
+) {
+    let rec = rrect(rec.x - rec.width/2.,
+                    rec.y - rec.height/2.,
+                    rec.width, rec.height);
+    ds_draw_toggle_rounded(d, font, text, rec, val);
+}
+
+/// Draw a toggle with the default style. Toggle has rounded corners (as opposed to RGui's toggle)
+pub fn ds_draw_toggle_rounded(
+    d: &mut RaylibDrawHandle,
+    font: &Font,
+    text: Option<&str>,
+    rec: Rectangle,
+    val: &mut bool
+) {
+    
+    let border_color;
+    let base_color; 
+    let text_color;
+    
+    let rec = rrect(rec.x + 2., rec.y + 2., rec.width - 4., rec.height - 4.);
+    let active = rec.check_collision_point_rec(d.get_mouse_position());
+
+    if *val {
+        border_color = mutex_get(&BORDER_COLOR_PRESSED);
+        base_color = mutex_get(&BASE_COLOR_PRESSED);
+        text_color = Color::BLACK;
+    } else if active {
+        border_color = mutex_get(&BORDER_COLOR_FOCUSED);
+        base_color = mutex_get(&BASE_COLOR_FOCUSED);
+        text_color  = Color::BLACK;
+    } else {
+        border_color = mutex_get(&BORDER_COLOR_NORMAL);
+        base_color = mutex_get(&BASE_COLOR_NORMAL);
+        text_color = Color::BLACK;
+    }
+    
+    d.draw_rectangle_rounded_lines(rec,
+                                   0.2,
+                                   5,
+                                   2,
+                                   border_color);
+    d.draw_rectangle_rounded(rec,
+                             0.2,
+                             5,
+                             base_color);
+    if let Some(txt) = text {
+        draw_text_centered(d,
+                           &font,
+                           txt,
+                           (rec.x + rec.width/2.) as i32,
+                           (rec.y + rec.height/2.) as i32,
+                           16,
+                           text_color);
+        // d.draw_text_ex(font,
+        //                txt,
+        //                rvec2(rec.x, rec.y),
+        //                16.,
+        //                1.,
+        //                text_color);
+    }
+
+    if active && d.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
+        *val = !*val;
+    }
 }

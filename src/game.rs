@@ -215,23 +215,23 @@ pub fn color_init(rd: &mut RaylibHandle) {
     mutex_set(
         &BORDER_COLOR_DISABLED,
         Color::get_color(rd.gui_get_style(
-                GuiControl::BUTTON, 
-                GuiControlProperty::BORDER_COLOR_DISABLED as i32
+            GuiControl::BUTTON,
+            GuiControlProperty::BORDER_COLOR_DISABLED as i32,
         )),
     );
 
     mutex_set(
         &BASE_COLOR_DISABLED,
         Color::get_color(rd.gui_get_style(
-                GuiControl::BUTTON, 
-                GuiControlProperty::BASE_COLOR_DISABLED as i32
+            GuiControl::BUTTON,
+            GuiControlProperty::BASE_COLOR_DISABLED as i32,
         )),
     );
     mutex_set(
         &TEXT_COLOR_DISABLED,
         Color::get_color(rd.gui_get_style(
-                GuiControl::BUTTON, 
-                GuiControlProperty::TEXT_COLOR_DISABLED as i32
+            GuiControl::BUTTON,
+            GuiControlProperty::TEXT_COLOR_DISABLED as i32,
         )),
     );
 }

@@ -136,9 +136,9 @@ pub fn scale_to(src: &mut Rectangle, width: f32, height: f32) {
 }
 
 pub fn center_in(src: &mut Rectangle, center: Rectangle) {
-    src.x = center.x + center.width/2.0 - src.width/2.0;
-    src.y = center.y + center.height/2.0 - src.height/2.0;
-}   
+    src.x = center.x + center.width / 2.0 - src.width / 2.0;
+    src.y = center.y + center.height / 2.0 - src.height / 2.0;
+}
 
 #[derive(Debug)]
 struct CreatedObject {
@@ -159,10 +159,7 @@ fn find_obj(
     None
 }
 
-fn find_i32(
-    target: i32,
-    vec: &Vec<i32>
-) -> Option<usize> {
+fn find_i32(target: i32, vec: &Vec<i32>) -> Option<usize> {
     for i in 0..vec.len() {
         if target == *vec.get(i).unwrap() {
             return Some(i);
@@ -192,6 +189,7 @@ fn main() {
     let mut bounding_box_mode = false;
     let mut obj_preview_mode = false;
     let mut edit_existing_object = false;
+    let mut animating = false;
 
     let mut spritesheet = handle
         .load_texture_from_image(&thread, &Image::gen_image_color(1, 1, Color::WHITE))
@@ -269,8 +267,17 @@ fn main() {
         let mut d = handle.begin_drawing(&thread);
 
         d.clear_background(Color::SKYBLUE);
+
+        /* OBJECT SELECTION / DRAG-DROP MENU
+         * Presents the option of picking from the set
+         * of pre-existing object, or to drag in a PNG
+         * file and create a new object from scratch.
+         * Loads existing objects statically using the
+         * same mechanisms as the game does.
+         * */
         if !object_mode {
             let menu_rect = rrect(16, 16, scr_w - 32, scr_h - 32);
+            // Draw Explanation of Screen
             draw_text_centered(
                 &mut d,
                 &font,
@@ -290,6 +297,7 @@ fn main() {
                 Color::BLACK,
             );
 
+            // Get all existing objects by collecting the read_dir iterator
             let mut items = std::fs::read_dir("obj/")
                 .expect("Unable to read obj/")
                 .map(|res| {
@@ -305,6 +313,7 @@ fn main() {
                 .expect("Unable to collect obj iter");
             items.sort();
 
+            // Existing Object Selection Scroll Bar
             if ds_scroll_selection(
                 &mut d,
                 &font,
@@ -321,103 +330,176 @@ fn main() {
                 obj_preview_mode = true;
             }
 
+            /* DRAW OBJECT PREVIEW AND SUBIMAGE VIEWER
+             * allows the user to see their selected
+             * object scaled up to 320 x 320 pixels. They
+             * can select different subimages and view them
+             * too.
+             * TODO: Animate animated objects if necessary.
+             * TODO: Provide a toggle for animation? */
             if obj_preview_mode {
-
-                if let Some(preview_obj) = find_obj(items.get(edit_object as usize).unwrap(), &all_obj) {
+                // Only preview if we are on a valid object.
+                // TODO: when `if let Some(_) = Option && condition` expressions are released,
+                // refactor section
+                if let Some(preview_obj) =
+                    find_obj(items.get(edit_object as usize).unwrap(), &all_obj)
+                {
                     let mut image_rect = rrect(0, 0, preview_obj.1.dim.0, preview_obj.1.dim.1);
-                    let src_rect = rrect(preview_subimage as f32 * image_rect.width,
-                                         0,
-                                         image_rect.width,
-                                         image_rect.height);
-                    
+                    let src_rect = rrect(
+                        preview_subimage as f32 * image_rect.width,
+                        0,
+                        image_rect.width,
+                        image_rect.height,
+                    );
+
                     let frame_rect = rrect(menu_rect.x + 260.0, 128, 320, 320);
                     scale_to(&mut image_rect, 320.0, 320.0);
-                    center_in(&mut image_rect, frame_rect); 
+                    center_in(&mut image_rect, frame_rect);
 
-
+                    // Frame
                     ds_rounded_rectangle_lines(&mut d, frame_rect, 0.05, 16, 3);
-                    d.draw_texture_pro(&preview_obj.0, src_rect, image_rect, rvec2(0, 0), 0.0, Color::WHITE);
-                    draw_text_centered(&mut d,
-                                       &font,
-                                       "Image Is Scaled To Fit In The Frame",
-                                       frame_rect.x as i32 + 160,
-                                       (frame_rect.y + frame_rect.height) as i32 + 32,
-                                       16,
-                                       Color::BLACK,
+                    // Sprite
+                    d.draw_texture_pro(
+                        &preview_obj.0,
+                        src_rect,
+                        image_rect,
+                        rvec2(0, 0),
+                        0.0,
+                        Color::WHITE,
                     );
-                    draw_text_centered(&mut d,
-                                       &font,
-                                       "NOT TO SCALE",
-                                       frame_rect.x as i32 + 160,
-                                       (frame_rect.y + frame_rect.height) as i32 + 12,
-                                       16,
-                                       Color::BLACK,
+
+                    // Warning Messsage
+                    draw_text_centered(
+                        &mut d,
+                        &font,
+                        "Image Is Scaled To Fit In The Frame",
+                        frame_rect.x as i32 + 160,
+                        (frame_rect.y + frame_rect.height) as i32 + 32,
+                        16,
+                        Color::BLACK,
                     );
-                    if ds_rounded_button_centered(&mut d,
-                                               &font,
-                                               rrect(frame_rect.x + (1.0/8.0)*frame_rect.width,
-                                                     frame_rect.y + frame_rect.height + 12.0,
-                                                     48,
-                                                     16),
-                                                Some("prev"),
-                                                preview_obj.1.img_per_side > 1,
-                    ).0 {
+                    draw_text_centered(
+                        &mut d,
+                        &font,
+                        "NOT TO REAL SIZE",
+                        frame_rect.x as i32 + 160,
+                        (frame_rect.y + frame_rect.height) as i32 + 12,
+                        16,
+                        Color::BLACK,
+                    );
+
+
+                    // Previous Subimage and Next Subimage buttons
+                    if ds_rounded_button_centered(
+                        &mut d,
+                        &font,
+                        rrect(
+                            frame_rect.x + (1.0 / 8.0) * frame_rect.width,
+                            frame_rect.y + frame_rect.height + 12.0,
+                            48,
+                            16,
+                        ),
+                        Some("prev"),
+                        preview_obj.1.img_per_side > 1 && !animating,
+                    )
+                    .0
+                    {
                         preview_subimage -= 1;
                         if preview_subimage < 0 {
                             preview_subimage = preview_obj.1.img_per_side - 1;
                         }
                     }
-                    
-                    if ds_rounded_button_centered(&mut d,
-                                               &font,
-                                               rrect(frame_rect.x + (7.0/8.0)*frame_rect.width,
-                                                     frame_rect.y + frame_rect.height + 12.0,
-                                                     48,
-                                                     16),
-                                                Some("next"),
-                                                preview_obj.1.img_per_side > 1,
-                    ).0 {
+
+                    if ds_rounded_button_centered(
+                        &mut d,
+                        &font,
+                        rrect(
+                            frame_rect.x + (7.0 / 8.0) * frame_rect.width,
+                            frame_rect.y + frame_rect.height + 12.0,
+                            48,
+                            16,
+                        ),
+                        Some("next"),
+                        preview_obj.1.img_per_side > 1 && !animating,
+                    )
+                    .0
+                    {
                         preview_subimage += 1;
                         if preview_subimage >= preview_obj.1.img_per_side {
                             preview_subimage = 0;
                         }
                     }
-                    
-                    if ds_rounded_button_centered(&mut d,
-                                                  &font,
-                                                  rrect(frame_rect.x + frame_rect.width/2.0,
-                                                        frame_rect.y + frame_rect.height + 64.0,
-                                                        184,
-                                                        24),
-                                                  Some("LOAD AND EDIT OBJECT"),
-                                                  true,
-                    ).0 {
 
+                    // If we need to animate, draw animation toggle and animate.
+                    if let Some(speed) = preview_obj.1.image_speed {
+                        // animating = d.gui_toggle(
+                        //     rrect(
+                        //         frame_rect.x + 160. - 92.,
+                        //         frame_rect.y + frame_rect.height + 88.,
+                        //         184,
+                        //         24,
+                        //     ),
+                        //     Some(rstr!("toggle animation")),
+                        //     animating,
+                        // );
+                        ds_draw_toggle_rounded_centered(&mut d,
+                                               &font,
+                                               Some("toggle animation"),
+                                               rrect(frame_rect.x + frame_rect.width/2.,
+                                                     frame_rect.y + frame_rect.height + 88.,
+                                                     184,
+                                                     24),
+                                               &mut animating);
+
+                        if animating && frame_count % speed == 0 {
+                            preview_subimage += 1;
+                            if preview_subimage >= preview_obj.1.img_per_side {
+                                preview_subimage = 0;
+                            }
+                        }
+                    }
+
+                    // Object Select button
+                    if ds_rounded_button_centered(
+                        &mut d,
+                        &font,
+                        rrect(
+                            frame_rect.x + frame_rect.width / 2.0,
+                            frame_rect.y + frame_rect.height + 64.0,
+                            184,
+                            24,
+                        ),
+                        Some("LOAD AND EDIT OBJECT"),
+                        true,
+                    )
+                    .0
+                    {
                         // Select item and gtfo
                         object_mode = true;
                         obj_preview_mode = false;
                         edit_existing_object = true;
 
-                        let fname =  String::from("obj/") + items.get(edit_object as usize).unwrap() + "/spr.png";
- 
-                        spritesheet = unsafe{ Texture2D::from_raw(preview_obj.0.clone()) } ;
+                        let fname = String::from("obj/")
+                            + items.get(edit_object as usize).unwrap()
+                            + "/spr.png";
+
+                        spritesheet = unsafe { Texture2D::from_raw(preview_obj.0.clone()) };
                         obj.image_name = fname;
                         obj.conf = preview_obj.1.clone();
 
-                        side_options =
-                            divisors_bar(spritesheet.height()).expect("Unable to get divisors for spritesheet");
+                        side_options = divisors_bar(spritesheet.height())
+                            .expect("Unable to get divisors for spritesheet");
                         side_options_str = div_to_cstr(&side_options);
-                        subimage_options =
-                            divisors_bar(spritesheet.width()).expect("Unable to get divisors for spritesheet");
+                        subimage_options = divisors_bar(spritesheet.width())
+                            .expect("Unable to get divisors for spritesheet");
                         subimage_options_str = div_to_cstr(&subimage_options);
-                        
 
                         side = find_i32(obj.conf.sides, &side_options).unwrap_or(0) as i32;
-                        subimage = find_i32(obj.conf.img_per_side, &subimage_options).unwrap_or(0) as i32;
+                        subimage =
+                            find_i32(obj.conf.img_per_side, &subimage_options).unwrap_or(0) as i32;
                         cur_subimg = 0;
-                        anim_speed = 0;
+                        anim_speed = obj.conf.image_speed.unwrap_or(0);
                     }
-
                 }
             }
         } else {
