@@ -178,6 +178,7 @@ fn main() {
     let mut object_mode = false;
     let mut bounding_box_mode = false;
     let mut obj_preview_mode = false;
+    let mut edit_existing_object = false;
 
     let mut spritesheet = handle
         .load_texture_from_image(&thread, &Image::gen_image_color(1, 1, Color::WHITE))
@@ -309,8 +310,8 @@ fn main() {
 
             if obj_preview_mode {
 
-                if let Some(obj) = find_obj(items.get(edit_object as usize).unwrap(), &all_obj) {
-                    let mut image_rect = rrect(0, 0, obj.1.dim.0, obj.1.dim.1);
+                if let Some(preview_obj) = find_obj(items.get(edit_object as usize).unwrap(), &all_obj) {
+                    let mut image_rect = rrect(0, 0, preview_obj.1.dim.0, preview_obj.1.dim.1);
                     let src_rect = rrect(preview_subimage as f32 * image_rect.width,
                                          0,
                                          image_rect.width,
@@ -322,7 +323,7 @@ fn main() {
 
 
                     ds_rounded_rectangle_lines(&mut d, frame_rect, 0.05, 16, 3);
-                    d.draw_texture_pro(&obj.0, src_rect, image_rect, rvec2(0, 0), 0.0, Color::WHITE);
+                    d.draw_texture_pro(&preview_obj.0, src_rect, image_rect, rvec2(0, 0), 0.0, Color::WHITE);
                     draw_text_centered(&mut d,
                                        &font,
                                        "Image Is Scaled To Fit In The Frame",
@@ -346,14 +347,63 @@ fn main() {
                                                      48,
                                                      16),
                                                 Some("prev"),
-                                                obj.1.img_per_side > 1,
+                                                preview_obj.1.img_per_side > 1,
                     ).0 {
                         preview_subimage -= 1;
                         if preview_subimage < 0 {
-                            preview_subimage = obj.1.img_per_side - 1;
+                            preview_subimage = preview_obj.1.img_per_side - 1;
                         }
                     }
-                     
+                    
+                    if ds_rounded_button_centered(&mut d,
+                                               &font,
+                                               rrect(frame_rect.x + (7.0/8.0)*frame_rect.width,
+                                                     frame_rect.y + frame_rect.height + 12.0,
+                                                     48,
+                                                     16),
+                                                Some("next"),
+                                                preview_obj.1.img_per_side > 1,
+                    ).0 {
+                        preview_subimage += 1;
+                        if preview_subimage >= preview_obj.1.img_per_side {
+                            preview_subimage = 0;
+                        }
+                    }
+                    
+                    if ds_rounded_button_centered(&mut d,
+                                                  &font,
+                                                  rrect(frame_rect.x + frame_rect.width/2.0,
+                                                        frame_rect.y + frame_rect.height + 64.0,
+                                                        184,
+                                                        24),
+                                                  Some("LOAD AND EDIT OBJECT"),
+                                                  true,
+                    ).0 {
+
+                        // Select item and gtfo
+                        object_mode = true;
+                        obj_preview_mode = false;
+                        edit_existing_object = true;
+
+                        let fname =  String::from("obj/") + items.get(edit_object as usize).unwrap() + "/spr.png";
+ 
+                        spritesheet = unsafe{ Texture2D::from_raw(preview_obj.0.clone()) } ;
+                        obj.image_name = fname;
+                        obj.conf = preview_obj.1.clone();
+
+                        side_options =
+                            divisors_bar(spritesheet.height()).expect("Unable to get divisors for spritesheet");
+                        side_options_str = div_to_cstr(&side_options);
+                        subimage_options =
+                            divisors_bar(spritesheet.width()).expect("Unable to get divisors for spritesheet");
+                        subimage_options_str = div_to_cstr(&subimage_options);
+
+                        side = 0;
+                        subimage = 0;
+                        cur_subimg = 0;
+                        anim_speed = 0;
+                    }
+
                 }
             }
         } else {

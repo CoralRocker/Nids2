@@ -276,12 +276,13 @@ pub fn ds_rounded_rectangle(
     roundness: f32,
     segments: i32,
 ) {
-    let D_BASE_COLOR_NORMAL = Color::get_color(rd.gui_get_style(
-        GuiControl::DEFAULT,
-        GuiDefaultProperty::BACKGROUND_COLOR as i32,
-    ));
+    let base_color = mutex_get(&BASE_COLOR_NORMAL);
+    //     Color::get_color(rd.gui_get_style(
+    //     GuiControl::DEFAULT,
+    //     GuiDefaultProperty::BACKGROUND_COLOR as i32,
+    // ));
 
-    rd.draw_rectangle_rounded(rec, roundness, segments, D_BASE_COLOR_NORMAL);
+    rd.draw_rectangle_rounded(rec, roundness, segments, base_color);
 }
 
 /// Draws a rounded rectangle outline with the default rgui style
@@ -292,11 +293,9 @@ pub fn ds_rounded_rectangle_lines(
     segments: i32,
     line_width: i32,
 ) {
-    let D_BORDER_COLOR_NORMAL = Color::get_color(
-        rd.gui_get_style(GuiControl::DEFAULT, GuiDefaultProperty::LINE_COLOR as i32),
-    );
+    let border_color = mutex_get(&BORDER_COLOR_NORMAL);
 
-    rd.draw_rectangle_rounded_lines(rec, roundness, segments, line_width, D_BORDER_COLOR_NORMAL);
+    rd.draw_rectangle_rounded_lines(rec, roundness, segments, line_width, border_color);
 }
 
 /// Draws a rounded button centered.
@@ -396,20 +395,34 @@ pub fn rect_midpoint(rec: Rectangle) -> (i32, i32) {
 }
 
 /// A Scrollable selection box with mouse control
-pub fn ds_scroll_selection(
+pub fn ds_scroll_selection (
     rd: &mut RaylibDrawHandle,
     font: &Font,
     rec: Rectangle,
     selections: &Vec<String>,
     selection: &mut i32,
-    top_item_index: &mut i32
+    top_item_index: &mut i32,
+) -> bool {
+    ds_scroll_selection_ex(rd, font, rec, selections, selection, top_item_index, 16)
+}
+
+/// A Scrollable selection box with extended configuration
+pub fn ds_scroll_selection_ex(
+    rd: &mut RaylibDrawHandle,
+    font: &Font,
+    rec: Rectangle,
+    selections: &Vec<String>,
+    selection: &mut i32,
+    top_item_index: &mut i32,
+    fontsize: i32,
+    
 ) -> bool {
     let active = rec.check_collision_point_rec(rd.get_mouse_position());
     let border_w = mutex_get(&BORDER_WIDTH);
     let mut item_rect = rrect(rec.x + 2.0, rec.y - 30.0, rec.width - 4.0, 30);
 
-    rd.draw_rectangle_rounded(rec, 0.4, 5, mutex_get(&BASE_COLOR_NORMAL));
-    rd.draw_rectangle_rounded_lines(rec, 0.4, 5, border_w, mutex_get(&BORDER_COLOR_NORMAL));
+    rd.draw_rectangle_rounded(rec, 0.1, 5, mutex_get(&BASE_COLOR_NORMAL));
+    rd.draw_rectangle_rounded_lines(rec, 0.1, 5, border_w, mutex_get(&BORDER_COLOR_NORMAL));
 
     let num_items = (rec.height - 12.0) as i32 / item_rect.height as i32;
 
@@ -426,7 +439,10 @@ pub fn ds_scroll_selection(
         let (cx, cy) = rect_midpoint(item_rect);
         let txt = selections.get((n + *top_item_index) as usize);
         if let Some(t) = txt {
-            draw_text_centered(rd, font, t, cx, cy, 16, Color::BLACK);
+            draw_text_centered(rd, font, t, cx, cy, fontsize, Color::BLACK);
+        }
+        if n+*top_item_index == *selection {
+                rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::GRAY.fade(0.40));
         }
         if item_rect.check_collision_point_rec(rd.get_mouse_position()) {
             if txt.is_some() {
