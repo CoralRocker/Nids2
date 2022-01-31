@@ -5,3 +5,4 @@ sides = 4
 img_per_side = 4
 category = "player"
 image_speed = 8
+default_b_box = [9, 32, 16, 12]

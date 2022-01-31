@@ -48,6 +48,7 @@ impl Object for Naomi {
      */
     fn do_step(&mut self, frame_no: i32) {
         self.base.do_step(frame_no);
+        
         if self.moving {
             match self.dir {
                 Direction::Right => {
@@ -79,11 +80,11 @@ impl Object for Naomi {
                 self.moving = false;
                 self.base.set_shift(0);
             }
-            self.base.update_depth();
         }
+        self.base.update_depth();
     }
 
-    fn collide(&self, other: Option<&Vec<(i32, i32)>>) -> bool {
+    fn collide(&self, other: Option<&Rectangle>) -> bool {
         self.base.collide(other)
     }
 
@@ -112,6 +113,21 @@ impl Naomi {
             select_obj: None,
         }
     }
+    pub fn is_spot_free(
+        &self,
+        spot: Rectangle,
+        objects: &Vec<Vec<std::rc::Rc<RefCell<dyn Object>>>>,
+    ) -> bool {
+        for depth in objects.iter() {
+            for obj in depth.iter() {
+                if obj.borrow().collide(Some(&spot)) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
 
     /** Check for recent input from the user
      */
@@ -119,6 +135,7 @@ impl Naomi {
         &mut self,
         rl: &mut RaylibHandle,
         next_id: i32,
+        objects: &Vec<Vec<std::rc::Rc<RefCell<dyn Object>>>>,
     ) -> Option<Rc<RefCell<GenericObject>>> {
         if self.moving {
             return None;
@@ -127,17 +144,25 @@ impl Naomi {
         let old_dir = self.dir.clone();
 
         if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-            self.moving = true;
             self.dir = Direction::Right;
+            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + 16. + self.base.pos.x as f32, r.y + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+                self.moving = true;
+            }
         } else if rl.is_key_down(KeyboardKey::KEY_LEFT) {
-            self.moving = true;
             self.dir = Direction::Left;
+            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x - 16. + self.base.pos.x as f32, r.y + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+                self.moving = true;
+            }
         } else if rl.is_key_down(KeyboardKey::KEY_DOWN) {
-            self.moving = true;
             self.dir = Direction::Down;
+            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + self.base.pos.x as f32, r.y + 16. + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+                self.moving = true;
+            }
         } else if rl.is_key_down(KeyboardKey::KEY_UP) {
-            self.moving = true;
             self.dir = Direction::Up;
+            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + self.base.pos.x as f32, r.y - 16. +  self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+                self.moving = true;
+            }
         }
 
         if let Some(obj) = &self.select_obj {

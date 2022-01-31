@@ -8,8 +8,8 @@ use std::sync::{Arc, Mutex};
  */
 #[derive(Copy, Clone)]
 pub struct Position {
-    x: i32,
-    y: i32,
+    pub x: i32,
+    pub y: i32,
 }
 
 /** So that we don't have to perform conversions when drawing using position instead of Vector2.
@@ -32,6 +32,10 @@ impl Position {
     pub fn offset(&self, x_off: i32, y_off: i32) -> Self {
         Self::new(self.x + x_off, self.y + y_off)
     }
+
+    pub fn to_rect(&self, width: i32, height: i32) -> Rectangle {
+        rrect(self.x, self.y, width, height)
+    }
 }
 
 impl Default for Position {
@@ -45,7 +49,7 @@ impl Default for Position {
 pub trait Object {
     fn draw(&self, rl: &mut RaylibDrawHandle);
     fn do_step(&mut self, frame_no: i32);
-    fn collide(&self, other: Option<&Vec<(i32, i32)>>) -> bool;
+    fn collide(&self, other: Option<&Rectangle>) -> bool;
     fn get_b_box(&self) -> Option<&Rectangle>;
     fn get_depth(&self) -> i32;
     fn get_id(&self) -> i32;
@@ -89,8 +93,15 @@ impl Object for GenericObject {
         }
     }
 
-    fn collide(&self, other: Option<&Vec<(i32, i32)>>) -> bool {
-        other.is_some()
+    fn collide(&self, other: Option<&Rectangle>) -> bool {
+        if self.b_box.is_none() {
+            return false;
+        }
+        if let Some(bbox) = other {
+        return bbox.check_collision_recs(&self.b_box.map(|r| rrect(r.x + self.pos.x as f32, r.y + self.pos.y as f32, r.width, r.height)).unwrap()); 
+    
+        }
+        false
     }
 
     fn get_b_box(&self) -> Option<&Rectangle> {

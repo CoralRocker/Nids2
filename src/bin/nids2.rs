@@ -2,6 +2,8 @@
 
 use lazy_static::lazy_static;
 use nids2::{game, naomi, object, util};
+use nids2::naomi::*;
+use nids2::object::*;
 use raylib::ffi::Rectangle as ffirect;
 use raylib::prelude::*;
 use std::cell::RefCell;
@@ -74,7 +76,7 @@ fn main() {
         scr_w,
         scr_h,
     )));
-    util::insert_object(&mut objects, naomi.clone());
+    // util::insert_object(&mut objects, naomi.clone());
 
     rl.set_exit_key(None);
 
@@ -86,6 +88,7 @@ fn main() {
                 obj.borrow_mut().do_step(frame_no);
             }
         }
+        naomi.borrow_mut().do_step(frame_no);
         for obj in util::get_all_obj(&objects).iter() {
             util::update_object_in_list(&mut objects, obj.clone());
         }
@@ -95,7 +98,7 @@ fn main() {
         }
 
         if !pause {
-            if let Some(obj) = naomi.borrow_mut().handle_input(&mut rl, frame_no) {
+            if let Some(obj) = naomi.borrow_mut().handle_input(&mut rl, frame_no, &objects) {
                 let mut depth = obj.borrow().depth;
                 if depth < 0 {
                     depth = 0;
@@ -109,13 +112,22 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
         // d.clear_background(Color::RAYWHITE);
         d.draw_texture(&background_tiles, 0, 0, Color::WHITE);
-        for depth in objects.iter() {
+        let target_depth = naomi.borrow().get_depth();
+
+        for (idx, depth) in objects.iter().enumerate() {
+                if idx == target_depth as usize {
+                    naomi.borrow().draw(&mut d);
+                }
             for obj in depth.iter() {
                 obj.borrow().draw(&mut d);
             }
         }
 
         if pause {
+            if d.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
+                pause = !pause;
+            }
+
             let menu_height = 128;
             let menu_bkgd_color = Color::from_hex("E0E645").unwrap().fade(0.75);
             let menu_frgd_color = Color::from_hex("EBD33B").unwrap();

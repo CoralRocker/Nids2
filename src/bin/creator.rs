@@ -502,6 +502,7 @@ fn main() {
                     }
                 }
             }
+        /* DRAW GUI AND INTERFACE */
         } else {
             // draw texture appropriately to fit on screen.
             let mut sprsht_rec = rrect(0, 0, spritesheet.width(), spritesheet.height());
@@ -515,7 +516,23 @@ fn main() {
                 0.0,
                 Color::WHITE,
             );
+            d.draw_text_ex(
+                &font,
+                format!(
+                    "Image Size: {} px by {} px",
+                    spritesheet.width(),
+                    spritesheet.height()
+                )
+                .as_str(),
+                rvec2(0, scr_h - 32),
+                24.0,
+                1.0,
+                Color::BLACK,
+            );
 
+            
+
+            // DRAW IMPORTANT CONTROLS
             d.gui_panel(Rectangle {
                 x: (scr_w / 2) as f32,
                 y: 0 as f32,
@@ -561,19 +578,7 @@ fn main() {
                 &mut anim_speed,
             );
 
-            d.draw_text_ex(
-                &font,
-                format!(
-                    "Image Size: {} px by {} px",
-                    spritesheet.width(),
-                    spritesheet.height()
-                )
-                .as_str(),
-                rvec2(0, scr_h - 32),
-                24.0,
-                1.0,
-                Color::BLACK,
-            );
+            /* ANIMATE SPRITE PREVIEW */
             {
                 let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
                 let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
@@ -583,10 +588,17 @@ fn main() {
                         cur_subimg = 0;
                     }
                 }
-                let pos = rvec2(scr_w / 4 * 3 - spr_w / 2, scr_h - spr_h);
-                anim_frame(&mut d, &spritesheet, spr_w, spr_h, side, cur_subimg, pos);
+                let spr_rect = rrect(spr_w * cur_subimg, spr_h * side, spr_w, spr_h);
+                let mut draw_rect = spr_rect.clone();
+                scale_to(&mut draw_rect, (scr_w/2) as f32, 290.0);
+                draw_rect.x = (scr_w as f32 * 0.75) - (draw_rect.width / 2.0);
+                draw_rect.y = scr_h as f32 - draw_rect.height;
+                d.draw_texture_pro(&spritesheet, spr_rect, draw_rect, rvec2(0,0), 0.0, Color::WHITE);
+                // anim_frame(&mut d, &spritesheet, spr_w, spr_h, side, cur_subimg, pos);
             }
+            
 
+            /* DRAW AND EXECUTE SAVE AND EXIT */
             if !bounding_box_mode
                 && d.gui_button(
                     rrect(scr_w / 2, 386, scr_w / 2, 64),
@@ -594,36 +606,35 @@ fn main() {
                 )
             {
                 let path = format!("obj/{}", obj.conf.name);
-                if fs::read_dir(path).is_err() {
-                    obj.conf.id = get_next_id();
-                    let spr_w =
-                        spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
-                    let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
-                    obj.conf.dim = (spr_w, spr_h);
-                    obj.conf.sides = *side_options.get(side as usize).unwrap();
-                    obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
-                    if anim_speed > 0 {
-                        obj.conf.image_speed = Some(anim_speed);
-                    } else {
-                        obj.conf.image_speed = None;
-                    }
-                    obj.conf.default_b_box = None;
+                let new_obj = fs::read_dir(path).is_err();
 
-                    let path = format!("obj/{}", obj.conf.name);
-                    let _ = fs::DirBuilder::new().create(&path);
-                    let toml = toml::to_string(&obj.conf).unwrap();
-                    let mut file = fs::File::create(path.clone() + "/obj.toml").unwrap();
-                    let _ = file.write(toml.as_bytes());
-                    let _ = fs::copy(&obj.image_name, path.clone() + "/spr.png");
-                    object_mode = false;
+                let spr_w =
+                    spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
+                let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
+                obj.conf.dim = (spr_w, spr_h);
+                obj.conf.sides = *side_options.get(side as usize).unwrap();
+                obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
+                if anim_speed > 0 {
+                    obj.conf.image_speed = Some(anim_speed);
                 } else {
-                    err = Some((
-                        "Object With This Name Already Exists!".to_string(),
-                        frame_count,
-                    ));
+                    obj.conf.image_speed = None;
                 }
-            }
+                
+                let path = format!("obj/{}", obj.conf.name);
+                
+                if new_obj {
+                    obj.conf.id = get_next_id();
+                    let _ = fs::DirBuilder::new().create(&path);
+                    let _ = fs::copy(&obj.image_name, path.clone() + "/spr.png");
+                }
 
+                let toml = toml::to_string(&obj.conf).unwrap();
+                let mut file = fs::File::create(path.clone() + "/obj.toml").unwrap();
+                let _ = file.write(toml.as_bytes());
+                object_mode = false;
+            }
+            
+            /* DRAW ERROR MESSAGES, IF ANY */
             if let Some((e, f)) = &err {
                 let trans_frame = f + 180;
                 let max_frame = trans_frame + 60;
@@ -641,7 +652,8 @@ fn main() {
                     err = None;
                 }
             }
-
+            
+            /* BOUNDING BOX BUTTON */
             if !bounding_box_mode
                 && d.gui_button(
                     rrect(scr_w / 2, 322, scr_w / 2, 64),
@@ -659,6 +671,8 @@ fn main() {
                     obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
                 }
             }
+            
+            /* DRAW BOUNDING BOX EDITOR OVER REST OF SCREEN */
             if bounding_box_mode {
                 let mode_rect = rrect(
                     scr_w as f32 * 0.25,
