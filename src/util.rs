@@ -208,8 +208,8 @@ pub fn max(a: i32, b: i32) -> i32 {
 
 /// Insert an object into the right depth in an object list.
 pub fn insert_object(
-    v: &mut Vec<Vec<rc::Rc<RefCell<dyn Object>>>>,
-    obj: rc::Rc<RefCell<dyn Object>>,
+    v: &mut Vec<Vec<rc::Rc<RefCell<GenericObject>>>>,
+    obj: rc::Rc<RefCell<GenericObject>>,
 ) {
     let depth = obj.borrow().get_depth() as usize;
     v.get_mut(depth)
@@ -219,8 +219,8 @@ pub fn insert_object(
 
 /// Check if object is already in the correct place in the objects list.
 pub fn is_object_correctly_placed(
-    v: &[Vec<rc::Rc<RefCell<dyn Object>>>],
-    obj: rc::Rc<RefCell<dyn Object>>,
+    v: &[Vec<rc::Rc<RefCell<GenericObject>>>],
+    obj: rc::Rc<RefCell<GenericObject>>,
 ) -> bool {
     let iter = &v
         .get(obj.borrow().get_depth() as usize)
@@ -234,8 +234,8 @@ pub fn is_object_correctly_placed(
 /** Find an object in the list by it's ID, remove it, and add it back at the correct depth. If the object is already in the correct position, this does nothing.
  */
 pub fn update_object_in_list(
-    v: &mut Vec<Vec<rc::Rc<RefCell<dyn Object>>>>,
-    obj: rc::Rc<RefCell<dyn Object>>,
+    v: &mut Vec<Vec<rc::Rc<RefCell<GenericObject>>>>,
+    obj: rc::Rc<RefCell<GenericObject>>,
 ) {
     if is_object_correctly_placed(v, obj.clone()) {
         return;
@@ -254,7 +254,7 @@ pub fn update_object_in_list(
 }
 
 /// Return all objects in the objects list, flattened.
-pub fn get_all_obj(v: &[Vec<rc::Rc<RefCell<dyn Object>>>]) -> Vec<rc::Rc<RefCell<dyn Object>>> {
+pub fn get_all_obj(v: &[Vec<rc::Rc<RefCell<GenericObject>>>]) -> Vec<rc::Rc<RefCell<GenericObject>>> {
     let mut res = Vec::new();
 
     for depth in v.iter() {
@@ -396,6 +396,29 @@ pub fn rect_midpoint(rec: Rectangle) -> (i32, i32) {
         (rec.x + rec.width / 2.0) as i32,
         (rec.y + rec.height / 2.0) as i32,
     )
+}
+
+/// A scroll selection box that automatically determines the right height to draw itself to display
+/// a given number of items. If the given number of items is invalid, it will display 1 item.
+pub fn ds_scroll_selection_auto(
+    rd: &mut RaylibDrawHandle,
+    font: &Font,
+    rec: Rectangle,
+    mut amt_display: i32,
+    selections: &Vec<String>,
+    selection: &mut i32,
+    top_item_index: &mut i32,
+) -> bool {
+    if amt_display < 0 && amt_display > selections.len() as i32 {
+        amt_display = 1;
+    }
+    let mut rec = rrect(
+        rec.x, rec.y, rec.width, 
+        amt_display * 30 + 12,
+    );
+    rec.y -= rec.height;
+    
+    ds_scroll_selection(rd, font, rec, selections, selection, top_item_index)
 }
 
 /// A Scrollable selection box with mouse control

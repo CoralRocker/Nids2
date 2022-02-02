@@ -51,14 +51,17 @@ pub trait Object {
     fn do_step(&mut self, frame_no: i32);
     fn collide(&self, other: Option<&Rectangle>) -> bool;
     fn get_b_box(&self) -> Option<&Rectangle>;
+    fn get_obj_rect(&self) -> Rectangle;
     fn get_depth(&self) -> i32;
     fn get_id(&self) -> i32;
+    fn get_collision_rect(&self) -> Rectangle;
+
 }
 
 /** The base for all objects. Grabs data from the LOADED_TEXTURES static variable and uses it to initialize an object of a known type.
  */
 pub struct GenericObject {
-    obj_id: i32,
+    pub obj_id: i32,
     id: i32,
     pub pos: Position,
     pub depth: i32,
@@ -68,6 +71,7 @@ pub struct GenericObject {
     pub side_shift_speed: i32,
     pub b_box: Option<Rectangle>,
 }
+
 
 impl Object for GenericObject {
     /** Simply draw the current sprite on the screen at the object's position. No color tinting or anything at all
@@ -114,6 +118,23 @@ impl Object for GenericObject {
 
     fn get_id(&self) -> i32 {
         self.id
+    }
+
+    fn get_obj_rect(&self) -> Rectangle {
+        return rrect(
+                self.pos.x, self.pos.y,
+                self.object_data.1.dim.0,
+                self.object_data.1.dim.1,
+            )
+    }
+
+    fn get_collision_rect(&self) -> Rectangle {
+        if let Some(rec) = self.b_box {
+            rrect(rec.x + self.pos.x as f32, rec.y + self.pos.y as f32,
+                  rec.width, rec.height)
+        }else{
+            self.get_obj_rect()
+        }
     }
 }
 

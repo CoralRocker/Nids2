@@ -30,7 +30,7 @@ pub struct Naomi {
     scrw: i32,
     scrh: i32,
     pub select_obj_type: i32,
-    select_obj: Option<Rc<RefCell<GenericObject>>>,
+    pub select_obj: Option<Rc<RefCell<GenericObject>>>,
 }
 
 impl Object for Naomi {
@@ -99,6 +99,14 @@ impl Object for Naomi {
     fn get_id(&self) -> i32 {
         self.base.get_id()
     }
+    
+    fn get_obj_rect(&self) -> Rectangle {
+        self.base.get_obj_rect()
+    }
+
+    fn get_collision_rect(&self) -> Rectangle {
+        self.base.get_collision_rect()
+    }
 }
 
 impl Naomi {
@@ -109,14 +117,14 @@ impl Naomi {
             dir: Direction::Right,
             scrw,
             scrh,
-            select_obj_type: 3,
+            select_obj_type: 2,
             select_obj: None,
         }
     }
     pub fn is_spot_free(
         &self,
         spot: Rectangle,
-        objects: &Vec<Vec<std::rc::Rc<RefCell<dyn Object>>>>,
+        objects: &Vec<Vec<std::rc::Rc<RefCell<GenericObject>>>>,
     ) -> bool {
         for depth in objects.iter() {
             for obj in depth.iter() {
@@ -135,7 +143,7 @@ impl Naomi {
         &mut self,
         rl: &mut RaylibHandle,
         next_id: i32,
-        objects: &Vec<Vec<std::rc::Rc<RefCell<dyn Object>>>>,
+        objects: &Vec<Vec<std::rc::Rc<RefCell<GenericObject>>>>,
     ) -> Option<Rc<RefCell<GenericObject>>> {
         if self.moving {
             return None;

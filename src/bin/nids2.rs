@@ -39,6 +39,7 @@ fn main() {
     game::color_init(&mut rl);
     let mut frame_no: i32 = 0;
     let mut pause = false;
+    let mut exit = false;
     let mut menu_selection = MenuSelections::MenuClosed;
     let mut opt_selection = 0;
     let mut opt_scroll_index = 0;
@@ -47,7 +48,9 @@ fn main() {
 
     let types_vec = util::get_all_types();
     let sorted_objs = util::get_all_objects_sorted();
+    
 
+    // Generate tiled background at the start of the game program.
     let background_tiles = {
         let mut bckg = Image::gen_image_color(scr_w, scr_h, Color::WHITE);
         let tile = Image::load_image("data/spr_tile.png").expect("Unable to open tile sprite!");
@@ -68,7 +71,7 @@ fn main() {
             .expect("Unable load texture from image!")
     };
 
-    let mut objects: Vec<Vec<rc::Rc<RefCell<dyn object::Object>>>> = Vec::new();
+    let mut objects: Vec<Vec<rc::Rc<RefCell<object::GenericObject>>>> = Vec::new();
     objects.resize(scr_h as usize, Vec::new());
     let naomi = rc::Rc::new(RefCell::new(naomi::Naomi::new(
         object::Position::new(0, 0),
@@ -80,7 +83,7 @@ fn main() {
 
     rl.set_exit_key(None);
 
-    while !rl.window_should_close() {
+    while !exit {
         frame_no += 1;
 
         for depth in objects.iter() {
@@ -108,6 +111,29 @@ fn main() {
                 objects.get_mut(depth as usize).unwrap().push(obj.clone());
             }
         }
+        
+        // Pick up an object and move it somewhere
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
+            // Determine if mouse landed on selectable item
+            // Select based off of bounding box, or if None, sprite_area.
+            // TODO: Pixel-perfect collisions?
+            let pos = rl.get_mouse_position();
+            let mut breakloop = false;
+
+            for depth in objects.iter_mut().rev() {
+                depth.retain(|obj| {
+                    if obj.borrow().get_collision_rect().check_collision_point_rec(pos) {
+                        naomi.borrow_mut().select_obj = Some(obj.clone());
+                        naomi.borrow_mut().select_obj_type = obj.borrow().obj_id;
+                        breakloop = true;
+                        return false;
+                    }
+                    true
+                });
+                if  breakloop { break; }
+            }
+
+        }
 
         let mut d = rl.begin_drawing(&thread);
         // d.clear_background(Color::RAYWHITE);
@@ -124,9 +150,6 @@ fn main() {
         }
 
         if pause {
-            if d.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
-                pause = !pause;
-            }
 
             let menu_height = 128;
             let menu_bkgd_color = Color::from_hex("E0E645").unwrap().fade(0.75);
@@ -182,20 +205,29 @@ fn main() {
             } else if exit_button {
                 menu_selection = MenuSelections::SaveExit;
             }
+            
+            if d.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
+                match menu_selection {
+                    MenuSelections::ItemSelect => menu_selection = MenuSelections::TypeSelect,
+                    MenuSelections::TypeSelect => menu_selection = MenuSelections::MenuClosed,
+                    MenuSelections::Options => menu_selection = MenuSelections::MenuClosed,
+                    MenuSelections::SaveExit => menu_selection = MenuSelections::MenuClosed,
+                    MenuSelections::MenuClosed => pause = false,
+                }
+            }
 
             match menu_selection {
                 MenuSelections::TypeSelect => {
-                    // let v = vec!["hi", "hello", "goodbye", "tchao", "ciao", "'sta matina"];
-                    let scroll_height = 80.0;
-                    if util::ds_scroll_selection(
+                    if util::ds_scroll_selection_auto(
                         &mut d,
                         &font,
                         rrect(
                             furn_vec.x,
-                            furn_vec.y - scroll_height,
+                            furn_vec.y,
                             scr_w / 4,
-                            scroll_height,
+                            0,
                         ),
+                        3,
                         &types_vec,
                         &mut opt_selection,
                         &mut opt_scroll_index,
@@ -204,25 +236,27 @@ fn main() {
                     }
                 }
                 MenuSelections::Options => (),
-                MenuSelections::SaveExit => (),
+                MenuSelections::SaveExit => {
+                    exit = true;
+                }
                 MenuSelections::ItemSelect => {
                     let vec_ref = sorted_objs
                         .get(types_vec.get(opt_selection as usize).unwrap())
                         .unwrap();
-                    let scroll_height = 80.0;
                     let mut name_vec = Vec::new();
                     for item in vec_ref.iter() {
                         name_vec.push(item.1.name.clone());
                     }
-                    if util::ds_scroll_selection(
+                    if util::ds_scroll_selection_auto(
                         &mut d,
                         &font,
                         rrect(
                             furn_vec.x,
-                            furn_vec.y - scroll_height,
+                            furn_vec.y,
                             scr_w / 4,
-                            scroll_height,
+                            0,
                         ),
+                        3,
                         &name_vec,
                         &mut selected_item,
                         &mut selected_item_scroll_index,

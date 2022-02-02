@@ -97,19 +97,6 @@ fn anim_selector(
     *val = rld.gui_scroll_bar(gui_bound, *val, min, max);
 }
 
-fn anim_frame(
-    rld: &mut RaylibDrawHandle,
-    spritesheet: &Texture2D,
-    width: i32,
-    height: i32,
-    side: i32,
-    subimage: i32,
-    pos: Vector2,
-) {
-    let spr_rect = rrect(width * subimage, height * side, width, height);
-
-    rld.draw_texture_rec(spritesheet, spr_rect, pos, Color::WHITE);
-}
 
 // Scales a rectangle to the given width and height. Preserves aspect
 // ratio. Scales width before height. Scales both larger and smaller.
@@ -188,7 +175,6 @@ fn main() {
     let mut object_mode = false;
     let mut bounding_box_mode = false;
     let mut obj_preview_mode = false;
-    let mut edit_existing_object = false;
     let mut animating = false;
 
     let mut spritesheet = handle
@@ -477,7 +463,6 @@ fn main() {
                         // Select item and gtfo
                         object_mode = true;
                         obj_preview_mode = false;
-                        edit_existing_object = true;
 
                         let fname = String::from("obj/")
                             + items.get(edit_object as usize).unwrap()
