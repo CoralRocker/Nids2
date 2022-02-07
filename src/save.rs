@@ -1,3 +1,8 @@
+//! # Save
+//! `save` defines the `Saveable<T>` trait, which requires types to be able to be converted
+//! to big-endian bytes. The object can then be read to type `T` from bytes
+
+
 use std::convert::TryInto;
 use std::error;
 use std::cell::RefCell;
@@ -11,7 +16,16 @@ pub struct SaveInfo<T> (pub T, pub usize);
 /// Trait converting from a type to a byte array so that
 /// it can be written to a file on the disk. Prefer big-endian 
 /// endianess for consistency.
-pub trait Saveable<T> where Self: Sized, T: Saveable<T> {
+/// from_bytes can return a different type than `Self`. That type is `T`.
+/// This is used for certain types, such as str and Ref which cannot themselves
+/// be created and returned, but which can be saved to bytes.
+///
+/// # Example 
+/// ```
+/// impl Saveable<str> for str { /*...*/ } // wouldn't work because `from_bytes` cannot return str as it has no definite size.
+/// impl Saveable<String> for str { /*...*/ } // would work because `String` can be returned.
+/// ```
+pub trait Saveable<T> where T: Saveable<T> {
     /// To big-endian byte vector
     fn to_bytes(&self) -> Vec<u8>;
     /// From big-endian byte vector to type `T`. `T` is not necessarily the same as `Self`.
@@ -94,6 +108,18 @@ impl Saveable<Self> for String {
     }
 }
 
+impl Saveable<String> for str {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut result = self.len().to_bytes();
+        result.extend(self.as_bytes().to_vec().iter());
+        result 
+    }
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<String>, Box<dyn error::Error>> {
+        let size = usize::from_bytes(bytes)?.0;
+        Ok(SaveInfo(String::from_utf8(bytes[8..size+8].to_vec())?, 8 + size))
+    }
+}
+
 impl<T> Saveable<Self> for Vec<T> where T: Saveable<T> {
     fn to_bytes(&self) -> Vec<u8> {
         let mut result = Vec::new();
@@ -134,7 +160,6 @@ impl<T> Saveable<Self> for Option<T> where T: Saveable<T> {
         } 
     }
 }
-
 
 impl<'a, T> Saveable<T> for std::cell::Ref<'a, T> where T: Saveable<T> {
     fn to_bytes(&self) -> Vec<u8> {
