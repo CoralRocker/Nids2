@@ -1,4 +1,5 @@
 use crate::object::*;
+use crate::save::*;
 use raylib::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,15 +21,17 @@ pub fn dir_to_u32(dir: &Direction) -> u32 {
     }
 }
 
+pub fn dir_to_i32(dir: &Direction) -> i32 { dir_to_u32(dir) as i32 }
+
 /** Main player for the game. Has additional methods compared to basic objects to allow for control
  * of the game state.
  */
 pub struct Naomi {
-    base: GenericObject,
-    moving: bool,
-    dir: Direction,
-    scrw: i32,
-    scrh: i32,
+    pub base: GenericObject,
+    pub moving: bool,
+    pub dir: Direction,
+    pub scrw: i32,
+    pub scrh: i32,
     pub select_obj_type: i32,
     pub select_obj: Option<Rc<RefCell<GenericObject>>>,
 }
@@ -111,16 +114,20 @@ impl Object for Naomi {
 
 impl Naomi {
     pub fn new(pos: Position, id: i32, scrw: i32, scrh: i32) -> Self {
-        Self {
+        let mut result = Self {
             base: GenericObject::new(1, id, Some(pos)),
             moving: false,
             dir: Direction::Right,
             scrw,
             scrh,
-            select_obj_type: 2,
+            select_obj_type: 0,
             select_obj: None,
-        }
+        };
+        result.base.set_shift(0);
+        result
     }
+    pub fn get_scrw(&self) -> i32 { self.scrw }
+    pub fn get_scrh(&self) -> i32 { self.scrh }
     pub fn is_spot_free(
         &self,
         spot: Rectangle,
@@ -150,25 +157,25 @@ impl Naomi {
         }
 
         let old_dir = self.dir.clone();
-
+        let is_change_dir = rl.is_key_down(KeyboardKey::KEY_LEFT_SHIFT) || rl.is_key_down(KeyboardKey::KEY_RIGHT_SHIFT);
         if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
             self.dir = Direction::Right;
-            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + 16. + self.base.pos.x as f32, r.y + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+            if !is_change_dir && self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + 16. + self.base.pos.x as f32, r.y + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
                 self.moving = true;
             }
         } else if rl.is_key_down(KeyboardKey::KEY_LEFT) {
             self.dir = Direction::Left;
-            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x - 16. + self.base.pos.x as f32, r.y + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+            if !is_change_dir && self.is_spot_free(self.base.b_box.map(|r| rrect(r.x - 16. + self.base.pos.x as f32, r.y + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
                 self.moving = true;
             }
         } else if rl.is_key_down(KeyboardKey::KEY_DOWN) {
             self.dir = Direction::Down;
-            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + self.base.pos.x as f32, r.y + 16. + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+            if !is_change_dir && self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + self.base.pos.x as f32, r.y + 16. + self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
                 self.moving = true;
             }
         } else if rl.is_key_down(KeyboardKey::KEY_UP) {
             self.dir = Direction::Up;
-            if self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + self.base.pos.x as f32, r.y - 16. +  self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
+            if !is_change_dir && self.is_spot_free(self.base.b_box.map(|r| rrect(r.x + self.base.pos.x as f32, r.y - 16. +  self.base.pos.y as f32, r.width, r.height)).unwrap(), objects) {
                 self.moving = true;
             }
         }
@@ -185,10 +192,13 @@ impl Naomi {
                 obj.pos = obj_position;
             }
         }
+        
+        if old_dir != self.dir {
+            self.base.set_side(dir_to_u32(&self.dir));
+        }
 
         if self.moving {
             let index = self.base.get_index();
-            self.base.set_side(dir_to_u32(&self.dir));
             if index == 1 || index == 2 {
                 self.base.set_index(2);
             }
@@ -218,3 +228,81 @@ impl Naomi {
         None
     }
 }
+
+/* SAVE IMPLEMENTATIONS */
+impl Saveable<Self> for Direction {
+    fn to_bytes(&self) -> Vec<u8> {
+        dir_to_i32(self).to_bytes()
+    }
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<Self>, Box<dyn std::error::Error>> {
+        match i32::from_bytes(bytes)?.0 {
+            0 => Ok(SaveInfo(Direction::Right, 4)),
+            1 => Ok(SaveInfo(Direction::Up, 4)),
+            2 => Ok(SaveInfo(Direction::Left, 4)),
+            3 => Ok(SaveInfo(Direction::Down, 4)),
+            _ => Err("invalid direction read")?
+        }
+    }
+}
+
+impl Saveable<Self> for Naomi {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut result = self.base.to_bytes();
+        result.extend(self.moving.to_bytes());
+        result.extend(self.dir.to_bytes());
+        result.extend(self.select_obj_type.to_bytes());
+        result.extend(self.select_obj.to_bytes());
+        result.extend(self.get_scrw().to_bytes());
+        result.extend(self.get_scrh().to_bytes());
+        result
+    }
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<Self>, Box<dyn std::error::Error>> {
+        let mut bytes_read = 0;
+        let base = {
+            let base = GenericObject::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let moving = {
+            let base = bool::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let dir = {
+            let base = Direction::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let select_obj_type = {
+            let base = i32::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let select_obj = {
+            let base = Option::<Rc<RefCell<GenericObject>>>::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let scrw = {
+            let base = i32::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let scrh = {
+            let base = i32::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        
+        Ok(SaveInfo(Naomi{
+            base,
+            moving,
+            dir,
+            scrw,
+            scrh,
+            select_obj_type,
+            select_obj, 
+        }, bytes_read))
+    }
+}
+

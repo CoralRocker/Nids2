@@ -3,6 +3,8 @@
 use crate::game::*;
 use raylib::prelude::*;
 use std::sync::{Arc, Mutex};
+use crate::save::*;
+
 
 /** Simple struct to hold the position in screenspace of an object
  */
@@ -308,3 +310,37 @@ impl GenericObject {
         self.object_data.1.dim.1
     }
 }
+
+/* SAVE IMPLEMENTATIONS */
+impl Saveable<Self> for Position {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut result = self.x.to_bytes();
+        result.extend(self.y.to_bytes().iter());
+        result
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<Self>, Box<dyn std::error::Error>> {
+        let result = Position{
+           x: i32::from_bytes(&bytes[0..4])?.0,
+           y: i32::from_bytes(&bytes[4..8])?.0,
+        };
+        Ok(SaveInfo(result, 8))
+    }
+}
+
+impl Saveable<Self> for GenericObject {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut result = self.get_id().to_bytes();
+        result.extend(self.obj_id.to_bytes());
+        result.extend(self.pos.to_bytes());
+        result
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<Self>, Box<dyn std::error::Error>> {
+        let id = i32::from_bytes(&bytes[0..4])?;
+        let obj_id = i32::from_bytes(&bytes[4..8])?;
+        let pos = Position::from_bytes(&bytes[8..16])?;
+        Ok(SaveInfo(GenericObject::new(id.0, obj_id.0, Some(pos.0)), 16))
+    }
+}
+

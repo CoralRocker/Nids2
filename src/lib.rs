@@ -11,3 +11,6 @@ pub mod object;
 /// Module to hold utility code. Mostly drawing functions, but includes some functions to mess with
 /// data, objects, and other useful utils. 
 pub mod util;
+
+/// Module to define how saving to a file works
+pub mod save;

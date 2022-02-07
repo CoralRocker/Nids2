@@ -25,6 +25,7 @@ fn main() {
     let scr_w = 640;
     let scr_h = 480;
 
+    /* GAME SCREEN AND STATIC INITIALIZATION */
     let (mut rl, thread) = raylib::init()
         .size(scr_w, scr_h)
         .title("Hello, World")
@@ -37,6 +38,9 @@ fn main() {
     rl.gui_set_font(&font);
     rl.set_target_fps(60);
     game::color_init(&mut rl);
+    rl.set_exit_key(None); 
+    
+    /* Game Loop Variables */
     let mut frame_no: i32 = 0;
     let mut pause = false;
     let mut exit = false;
@@ -46,6 +50,7 @@ fn main() {
     let mut selected_item = 0;
     let mut selected_item_scroll_index = 0;
 
+    /* Constant Object Type Vectors */
     let types_vec = util::get_all_types();
     let sorted_objs = util::get_all_objects_sorted();
     
@@ -70,37 +75,45 @@ fn main() {
         rl.load_texture_from_image(&thread, &bckg)
             .expect("Unable load texture from image!")
     };
-
+    
+    /* Vector containing all on-screen instances of object */
     let mut objects: Vec<Vec<rc::Rc<RefCell<object::GenericObject>>>> = Vec::new();
     objects.resize(scr_h as usize, Vec::new());
+
+    // Create Naomi Player Object
     let naomi = rc::Rc::new(RefCell::new(naomi::Naomi::new(
         object::Position::new(0, 0),
         1,
         scr_w,
         scr_h,
     )));
-    // util::insert_object(&mut objects, naomi.clone());
 
-    rl.set_exit_key(None);
-
+    /* GAME LOOP */
     while !exit {
-        frame_no += 1;
-
+        frame_no += 1; // Frame counter
+        
+        // Do Required Actions for all objects on screen
         for depth in objects.iter() {
             for obj in depth.iter() {
                 obj.borrow_mut().do_step(frame_no);
             }
         }
-        naomi.borrow_mut().do_step(frame_no);
+        naomi.borrow_mut().do_step(frame_no); // Naomi object is updated seperately for drawing reasons
+
+        // If objects were updated, change their position in the object vector
         for obj in util::get_all_obj(&objects).iter() {
             util::update_object_in_list(&mut objects, obj.clone());
         }
-
+        
+        // Pause key
         if rl.is_key_pressed(KeyboardKey::KEY_P) {
             pause = !pause;
         }
-
+        
+        // Handle player input if game is not paused
         if !pause {
+            // naomi::handle_input returns an object if one was placed down. This transfers
+            // ownership of the object from naomi to the main object vector
             if let Some(obj) = naomi.borrow_mut().handle_input(&mut rl, frame_no, &objects) {
                 let mut depth = obj.borrow().depth;
                 if depth < 0 {
@@ -134,28 +147,35 @@ fn main() {
             }
 
         }
-
+        
+        /* DRAW SECTION */
         let mut d = rl.begin_drawing(&thread);
-        // d.clear_background(Color::RAYWHITE);
+        
+        // Draw floor
         d.draw_texture(&background_tiles, 0, 0, Color::WHITE);
-        let target_depth = naomi.borrow().get_depth();
+        
+        { // Draw all objects onto the screen. Naomi object gets drawn at the correct depth
+            let target_depth = naomi.borrow().get_depth();
 
-        for (idx, depth) in objects.iter().enumerate() {
-                if idx == target_depth as usize {
-                    naomi.borrow().draw(&mut d);
+            for (idx, depth) in objects.iter().enumerate() {
+                    if idx == target_depth as usize {
+                        naomi.borrow().draw(&mut d);
+                    }
+                for obj in depth.iter() {
+                    obj.borrow().draw(&mut d);
                 }
-            for obj in depth.iter() {
-                obj.borrow().draw(&mut d);
             }
         }
-
+        
+        /* PAUSE MENU SECTION */
         if pause {
 
             let menu_height = 128;
-            let menu_bkgd_color = Color::from_hex("E0E645").unwrap().fade(0.75);
-            let menu_frgd_color = Color::from_hex("EBD33B").unwrap();
+            // let menu_bkgd_color = Color::from_hex("E0E645").unwrap().fade(0.75);
+            // let menu_frgd_color = Color::from_hex("EBD33B").unwrap();
             // d.gui_label_button(rrect(0, scr_h - menu_height, scr_w, menu_height), Some(rstr!("Pause Menu")));
 
+            /* Draw Base Buttons */
             let (furn_button, furn_vec) = util::ds_rounded_button_centered(
                 &mut d,
                 &font,
@@ -193,7 +213,8 @@ fn main() {
                 Some("Save and Exit"),
                 true,
             );
-
+            
+            /* Handle Button Returns */
             if furn_button {
                 menu_selection = if menu_selection == MenuSelections::MenuClosed {
                     MenuSelections::TypeSelect
@@ -206,6 +227,7 @@ fn main() {
                 menu_selection = MenuSelections::SaveExit;
             }
             
+            /* Close Certain Menus When Escape Is Pressed */
             if d.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
                 match menu_selection {
                     MenuSelections::ItemSelect => menu_selection = MenuSelections::TypeSelect,
@@ -215,7 +237,8 @@ fn main() {
                     MenuSelections::MenuClosed => pause = false,
                 }
             }
-
+            
+            /* Draw The Proper Submenu */
             match menu_selection {
                 MenuSelections::TypeSelect => {
                     if util::ds_scroll_selection_auto(
@@ -270,5 +293,8 @@ fn main() {
         }
     }
 
+    // Clean up initialized memory
+    // If objects vector is used after this, bad things may occur as the memory will no longer be
+    // valid.
     game::destroy();
 }
