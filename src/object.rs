@@ -72,6 +72,8 @@ pub struct GenericObject {
     object_data: Arc<(Texture2D, ObjectConfig)>,
     pub side_shift_speed: i32,
     pub b_box: Option<Rectangle>,
+    pub depthmod: i32,
+    pub colormod: Color,
 }
 
 
@@ -88,7 +90,7 @@ impl Object for GenericObject {
             height: obj.dim.1 as f32,
         };
 
-        rl.draw_texture_rec(tex, spr_rect, self.pos, Color::WHITE);
+        rl.draw_texture_rec(tex, spr_rect, self.pos, self.colormod);
     }
 
     /** Change the sprite if the object supports that.
@@ -115,7 +117,7 @@ impl Object for GenericObject {
     }
 
     fn get_depth(&self) -> i32 {
-        self.depth
+        self.depth + self.depthmod
     }
 
     fn get_id(&self) -> i32 {
@@ -171,6 +173,8 @@ impl GenericObject {
                 .default_b_box
                 .as_ref()
                 .map(|v| rrect(v.0, v.1, v.2, v.3)),
+            depthmod: 0,
+            colormod: Color::WHITE,
         }
     }
 
@@ -333,6 +337,10 @@ impl Saveable<Self> for GenericObject {
         let mut result = self.get_id().to_bytes();
         result.extend(self.obj_id.to_bytes());
         result.extend(self.pos.to_bytes());
+        result.extend(self.side_index.to_bytes());
+        result.extend(self.side.to_bytes());
+        result.extend(self.colormod.to_bytes());
+        result.extend(self.depthmod.to_bytes());
         result
     }
 
@@ -340,7 +348,16 @@ impl Saveable<Self> for GenericObject {
         let id = i32::from_bytes(&bytes[0..4])?;
         let obj_id = i32::from_bytes(&bytes[4..8])?;
         let pos = Position::from_bytes(&bytes[8..16])?;
-        Ok(SaveInfo(GenericObject::new(id.0, obj_id.0, Some(pos.0)), 16))
+        let side_index = i32::from_bytes(&bytes[16..20])?;
+        let side = i32::from_bytes(&bytes[20..24])?;
+        let colormod = Color::from_bytes(&bytes[24..28])?;
+        let depthmod = i32::from_bytes(&bytes[28..32])?;
+        let mut obj = GenericObject::new(id.0, obj_id.0, Some(pos.0));
+        obj.side_index = side_index.0;
+        obj.side = side.0;
+        obj.colormod = colormod.0;
+        obj.depthmod = depthmod.0;
+        Ok(SaveInfo(obj, 32))
     }
 }
 

@@ -9,6 +9,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::ops::Deref;
 
+use raylib::color;
+
 /// Holds a read object T, and the amount of bytes read for that object.
 /// Used to track how many bytes of a bytearray have been read.
 pub struct SaveInfo<T> (pub T, pub usize);
@@ -117,6 +119,15 @@ impl Saveable<String> for str {
     fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<String>, Box<dyn error::Error>> {
         let size = usize::from_bytes(bytes)?.0;
         Ok(SaveInfo(String::from_utf8(bytes[8..size+8].to_vec())?, 8 + size))
+    }
+}
+
+impl Saveable<color::Color> for color::Color {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.color_to_int().to_bytes()
+    }
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<color::Color>, Box<dyn error::Error>> {
+        Ok(SaveInfo(color::Color::get_color(i32::from_bytes(bytes)?.0), 4))
     }
 }
 

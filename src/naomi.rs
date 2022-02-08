@@ -179,6 +179,18 @@ impl Naomi {
                 self.moving = true;
             }
         }
+        
+        if let Some(o) = &self.select_obj {
+            match rl.get_key_pressed() {
+                Some(KeyboardKey::KEY_Q) => { o.borrow_mut().dec_index(); },
+                Some(KeyboardKey::KEY_E) => { o.borrow_mut().inc_index(); },
+                Some(KeyboardKey::KEY_W) => { o.borrow_mut().depthmod += 1; },
+                Some(KeyboardKey::KEY_S) => { o.borrow_mut().depthmod -= 1; },
+                Some(KeyboardKey::KEY_A) => { o.borrow_mut().dec_side(); },
+                Some(KeyboardKey::KEY_D) => { o.borrow_mut().inc_side(); },
+                _ => (),
+            };
+        }
 
         if let Some(obj) = &self.select_obj {
             let mut obj = obj.borrow_mut();

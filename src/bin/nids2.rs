@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, non_snake_case)]
 
+use std::io::Read;
 use lazy_static::lazy_static;
 use nids2::{game, naomi, object, util};
 use nids2::naomi::*;
@@ -11,6 +12,25 @@ use std::convert::{TryFrom, TryInto};
 use std::ffi::CString;
 use std::rc;
 use std::sync::{atomic, Mutex};
+use nids2::save::*;
+use std::fs;
+
+fn save_to_file(fname: &str, objs: &Vec<rc::Rc<RefCell<object::GenericObject>>>, player: &Naomi) {
+    let mut result = objs.to_bytes();
+    result.extend(player.to_bytes().iter());
+    fs::write(fname, result).unwrap();
+}
+
+fn load_from_file(fname: &str, objs: &mut Vec<rc::Rc<RefCell<object::GenericObject>>>, player: &mut Naomi) {
+    let mut file = fs::File::open(fname).unwrap();
+    let mut result = Vec::new();
+    let size = file.read_to_end(&mut result).unwrap();
+    let objs_res = Vec::<rc::Rc::<RefCell::<object::GenericObject>>>::from_bytes(result.as_slice()).unwrap();
+    let plyr_res = Naomi::from_bytes(&result[objs_res.1..]).unwrap();
+    
+    *objs = objs_res.0;
+    *player = plyr_res.0;
+}
 
 #[derive(PartialEq)]
 enum MenuSelections {
@@ -79,14 +99,24 @@ fn main() {
     /* Vector containing all on-screen instances of object */
     let mut objects: Vec<Vec<rc::Rc<RefCell<object::GenericObject>>>> = Vec::new();
     objects.resize(scr_h as usize, Vec::new());
-
+    
+    
+    
     // Create Naomi Player Object
-    let naomi = rc::Rc::new(RefCell::new(naomi::Naomi::new(
+    let mut naomi = naomi::Naomi::new(
         object::Position::new(0, 0),
         1,
         scr_w,
         scr_h,
-    )));
+    );
+    
+    if fs::File::open("nids.sav").is_ok() { /* Load All Objects */
+        let mut all_obj = Vec::new();
+        load_from_file("nids.sav", &mut all_obj, &mut naomi); 
+        for obj in all_obj.iter() {
+            util::insert_object(&mut objects, obj.clone());
+        }
+    } 
 
     /* GAME LOOP */
     while !exit {
@@ -98,7 +128,7 @@ fn main() {
                 obj.borrow_mut().do_step(frame_no);
             }
         }
-        naomi.borrow_mut().do_step(frame_no); // Naomi object is updated seperately for drawing reasons
+        naomi.do_step(frame_no); // Naomi object is updated seperately for drawing reasons
 
         // If objects were updated, change their position in the object vector
         for obj in util::get_all_obj(&objects).iter() {
@@ -114,7 +144,7 @@ fn main() {
         if !pause {
             // naomi::handle_input returns an object if one was placed down. This transfers
             // ownership of the object from naomi to the main object vector
-            if let Some(obj) = naomi.borrow_mut().handle_input(&mut rl, frame_no, &objects) {
+            if let Some(obj) = naomi.handle_input(&mut rl, frame_no, &objects) {
                 let mut depth = obj.borrow().depth;
                 if depth < 0 {
                     depth = 0;
@@ -136,8 +166,9 @@ fn main() {
             for depth in objects.iter_mut().rev() {
                 depth.retain(|obj| {
                     if obj.borrow().get_collision_rect().check_collision_point_rec(pos) {
-                        naomi.borrow_mut().select_obj = Some(obj.clone());
-                        naomi.borrow_mut().select_obj_type = obj.borrow().obj_id;
+                        if obj.borrow().obj_id == 1 { return true; }
+                        naomi.select_obj = Some(obj.clone());
+                        naomi.select_obj_type = obj.borrow().obj_id;
                         breakloop = true;
                         return false;
                     }
@@ -155,11 +186,11 @@ fn main() {
         d.draw_texture(&background_tiles, 0, 0, Color::WHITE);
         
         { // Draw all objects onto the screen. Naomi object gets drawn at the correct depth
-            let target_depth = naomi.borrow().get_depth();
+            let target_depth = naomi.get_depth();
 
             for (idx, depth) in objects.iter().enumerate() {
                     if idx == target_depth as usize {
-                        naomi.borrow().draw(&mut d);
+                        naomi.draw(&mut d);
                     }
                 for obj in depth.iter() {
                     obj.borrow().draw(&mut d);
@@ -260,6 +291,7 @@ fn main() {
                 }
                 MenuSelections::Options => (),
                 MenuSelections::SaveExit => {
+                    save_to_file("nids.sav", &util::get_all_obj(&objects), &naomi); 
                     exit = true;
                 }
                 MenuSelections::ItemSelect => {
@@ -284,7 +316,7 @@ fn main() {
                         &mut selected_item,
                         &mut selected_item_scroll_index,
                     ) {
-                        naomi.borrow_mut().select_obj_type =
+                        naomi.select_obj_type =
                             vec_ref.get(selected_item as usize).unwrap().1.id;
                     }
                 }
