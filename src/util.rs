@@ -3,14 +3,11 @@
 // Not for memory allocation or system-level things.
 
 use crate::game::*;
-use crate::object::*;
 use raylib::consts::KeyboardKey::*;
 use raylib::ffi::Rectangle as ffirect;
 use raylib::prelude::*;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::CString;
-use std::rc;
 use std::sync::Arc;
 
 /// Get Vector of all unique categories that contain objects.
@@ -206,69 +203,6 @@ pub fn max(a: i32, b: i32) -> i32 {
     }
 }
 
-/// Insert an object into the right depth in an object list.
-pub fn insert_object(
-    v: &mut Vec<Vec<rc::Rc<RefCell<GenericObject>>>>,
-    obj: rc::Rc<RefCell<GenericObject>>,
-) {
-    let depth = obj.borrow().get_depth() as usize;
-    v.get_mut(depth)
-        .expect("Invalid depth for object!")
-        .push(obj);
-}
-
-/// Check if object is already in the correct place in the objects list.
-pub fn is_object_correctly_placed(
-    v: &[Vec<rc::Rc<RefCell<GenericObject>>>],
-    obj: rc::Rc<RefCell<GenericObject>>,
-) -> bool {
-    let iter = &v
-        .get(obj.borrow().get_depth() as usize)
-        .expect("Object depth is invalid!");
-
-    // .any checks if anything in collection returns true for the predicate.
-    iter.iter()
-        .any(|x| -> bool { x.borrow().get_id() == obj.borrow().get_id() })
-}
-
-/** Find an object in the list by it's ID, remove it, and add it back at the correct depth. If the object is already in the correct position, this does nothing.
- */
-pub fn update_object_in_list(
-    v: &mut Vec<Vec<rc::Rc<RefCell<GenericObject>>>>,
-    obj: rc::Rc<RefCell<GenericObject>>,
-) {
-    if is_object_correctly_placed(v, obj.clone()) {
-        return;
-    }
-    let id = obj.borrow().get_id();
-    for depth in v.iter_mut() {
-        if let Some(p) = depth
-            .iter()
-            .position(|x| -> bool { x.borrow().get_id() == id })
-        {
-            depth.remove(p);
-            break;
-        }
-    }
-    insert_object(v, obj);
-}
-
-/// Return all objects in the objects list, flattened.
-pub fn get_all_obj(v: &[Vec<rc::Rc<RefCell<GenericObject>>>]) -> Vec<rc::Rc<RefCell<GenericObject>>> {
-    let mut res = Vec::new();
-
-    for depth in v.iter() {
-        res.append(&mut depth.clone());
-    }
-
-    res
-}
-
-/// Deprecated
-pub fn get_viewport(scr_w: i32, scr_h: i32) -> Rectangle {
-    rrect(0, 0, scr_w, scr_h - 256)
-}
-
 /// Draws a rounded rectangle with the default rgui style
 pub fn ds_rounded_rectangle(
     rd: &mut RaylibDrawHandle,
@@ -405,19 +339,16 @@ pub fn ds_scroll_selection_auto(
     font: &Font,
     rec: Rectangle,
     mut amt_display: i32,
-    selections: &Vec<String>,
+    selections: &[String],
     selection: &mut i32,
     top_item_index: &mut i32,
 ) -> bool {
     if amt_display < 0 && amt_display > selections.len() as i32 {
         amt_display = 1;
     }
-    let mut rec = rrect(
-        rec.x, rec.y, rec.width, 
-        amt_display * 30 + 12,
-    );
+    let mut rec = rrect(rec.x, rec.y, rec.width, amt_display * 30 + 12);
     rec.y -= rec.height;
-    
+
     ds_scroll_selection(rd, font, rec, selections, selection, top_item_index)
 }
 
@@ -426,7 +357,7 @@ pub fn ds_scroll_selection(
     rd: &mut RaylibDrawHandle,
     font: &Font,
     rec: Rectangle,
-    selections: &Vec<String>,
+    selections: &[String],
     selection: &mut i32,
     top_item_index: &mut i32,
 ) -> bool {
@@ -438,7 +369,7 @@ pub fn ds_scroll_selection_ex(
     rd: &mut RaylibDrawHandle,
     font: &Font,
     rec: Rectangle,
-    selections: &Vec<String>,
+    selections: &[String],
     selection: &mut i32,
     top_item_index: &mut i32,
     fontsize: i32,
@@ -475,11 +406,11 @@ pub fn ds_scroll_selection_ex(
                 rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::WHITE.fade(0.40));
             }
 
-            if rd.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON) {
-                if *top_item_index + n < selections.len() as i32 {
-                    *selection = n + *top_item_index;
-                    return true;
-                }
+            if rd.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON)
+                && *top_item_index + n < selections.len() as i32
+            {
+                *selection = n + *top_item_index;
+                return true;
             }
         }
     }
@@ -540,17 +471,20 @@ pub fn ds_draw_slider_centered(
 }
 
 /// Draw a toggle with the default style, rounded corners, and centered at the position given by
-/// the rec's x and y. 
+/// the rec's x and y.
 pub fn ds_draw_toggle_rounded_centered(
     d: &mut RaylibDrawHandle,
     font: &Font,
     text: Option<&str>,
     rec: Rectangle,
-    val: &mut bool
+    val: &mut bool,
 ) {
-    let rec = rrect(rec.x - rec.width/2.,
-                    rec.y - rec.height/2.,
-                    rec.width, rec.height);
+    let rec = rrect(
+        rec.x - rec.width / 2.,
+        rec.y - rec.height / 2.,
+        rec.width,
+        rec.height,
+    );
     ds_draw_toggle_rounded(d, font, text, rec, val);
 }
 
@@ -560,47 +494,39 @@ pub fn ds_draw_toggle_rounded(
     font: &Font,
     text: Option<&str>,
     rec: Rectangle,
-    val: &mut bool
+    val: &mut bool,
 ) {
-    
     let border_color;
-    let base_color; 
+    let base_color;
     let text_color;
-    
+
     let rec = rrect(rec.x + 2., rec.y + 2., rec.width - 4., rec.height - 4.);
     let active = rec.check_collision_point_rec(d.get_mouse_position());
 
     if *val {
         border_color = mutex_get(&BORDER_COLOR_PRESSED);
         base_color = mutex_get(&BASE_COLOR_PRESSED);
-        text_color = Color::BLACK;
     } else if active {
         border_color = mutex_get(&BORDER_COLOR_FOCUSED);
         base_color = mutex_get(&BASE_COLOR_FOCUSED);
-        text_color  = Color::BLACK;
     } else {
         border_color = mutex_get(&BORDER_COLOR_NORMAL);
         base_color = mutex_get(&BASE_COLOR_NORMAL);
-        text_color = Color::BLACK;
     }
-    
-    d.draw_rectangle_rounded_lines(rec,
-                                   0.2,
-                                   5,
-                                   2,
-                                   border_color);
-    d.draw_rectangle_rounded(rec,
-                             0.2,
-                             5,
-                             base_color);
+    text_color = Color::BLACK;
+
+    d.draw_rectangle_rounded_lines(rec, 0.2, 5, 2, border_color);
+    d.draw_rectangle_rounded(rec, 0.2, 5, base_color);
     if let Some(txt) = text {
-        draw_text_centered(d,
-                           &font,
-                           txt,
-                           (rec.x + rec.width/2.) as i32,
-                           (rec.y + rec.height/2.) as i32,
-                           16,
-                           text_color);
+        draw_text_centered(
+            d,
+            font,
+            txt,
+            (rec.x + rec.width / 2.) as i32,
+            (rec.y + rec.height / 2.) as i32,
+            16,
+            text_color,
+        );
         // d.draw_text_ex(font,
         //                txt,
         //                rvec2(rec.x, rec.y),

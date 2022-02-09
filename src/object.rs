@@ -1,10 +1,10 @@
 #![allow(dead_code, unused_imports, unused_variables)]
 
 use crate::game::*;
-use raylib::prelude::*;
-use std::sync::{Arc, Mutex};
 use crate::save::*;
-
+use raylib::prelude::*;
+use std::fmt;
+use std::sync::{Arc, Mutex};
 
 /** Simple struct to hold the position in screenspace of an object
  */
@@ -46,10 +46,16 @@ impl Default for Position {
     }
 }
 
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
 /** This trait defines what methods all objects are expected to implement.
  */
 pub trait Object {
-    fn draw(&self, rl: &mut RaylibDrawHandle);
+    fn draw(&self, rl: &mut RaylibDrawHandle, debug: bool);
     fn do_step(&mut self, frame_no: i32);
     fn collide(&self, other: Option<&Rectangle>) -> bool;
     fn get_b_box(&self) -> Option<&Rectangle>;
@@ -57,7 +63,6 @@ pub trait Object {
     fn get_depth(&self) -> i32;
     fn get_id(&self) -> i32;
     fn get_collision_rect(&self) -> Rectangle;
-
 }
 
 /** The base for all objects. Grabs data from the LOADED_TEXTURES static variable and uses it to initialize an object of a known type.
@@ -69,18 +74,17 @@ pub struct GenericObject {
     pub depth: i32,
     pub side: i32,
     pub side_index: i32,
-    object_data: Arc<(Texture2D, ObjectConfig)>,
+    pub object_data: Arc<(Texture2D, ObjectConfig)>,
     pub side_shift_speed: i32,
     pub b_box: Option<Rectangle>,
     pub depthmod: i32,
     pub colormod: Color,
 }
 
-
 impl Object for GenericObject {
     /** Simply draw the current sprite on the screen at the object's position. No color tinting or anything at all
      */
-    fn draw(&self, rl: &mut RaylibDrawHandle) {
+    fn draw(&self, rl: &mut RaylibDrawHandle, debug: bool) {
         let tex = &self.object_data.0;
         let obj = &self.object_data.1;
         let spr_rect = Rectangle {
@@ -91,6 +95,20 @@ impl Object for GenericObject {
         };
 
         rl.draw_texture_rec(tex, spr_rect, self.pos, self.colormod);
+        if debug {
+            rl.draw_rectangle_lines_ex(
+                rrect(self.pos.x, self.pos.y, spr_rect.width, spr_rect.height),
+                1,
+                Color::BLACK,
+            );
+            rl.draw_line(
+                self.pos.x,
+                self.get_depth(),
+                self.pos.x + spr_rect.width as i32,
+                self.get_depth(),
+                Color::RED,
+            );
+        }
     }
 
     /** Change the sprite if the object supports that.
@@ -99,6 +117,7 @@ impl Object for GenericObject {
         if self.side_shift_speed != 0 && frame_no % self.side_shift_speed == 0 {
             self.inc_index();
         }
+        self.depth = self.pos.y;
     }
 
     fn collide(&self, other: Option<&Rectangle>) -> bool {
@@ -106,8 +125,19 @@ impl Object for GenericObject {
             return false;
         }
         if let Some(bbox) = other {
-        return bbox.check_collision_recs(&self.b_box.map(|r| rrect(r.x + self.pos.x as f32, r.y + self.pos.y as f32, r.width, r.height)).unwrap()); 
-    
+            return bbox.check_collision_recs(
+                &self
+                    .b_box
+                    .map(|r| {
+                        rrect(
+                            r.x + self.pos.x as f32,
+                            r.y + self.pos.y as f32,
+                            r.width,
+                            r.height,
+                        )
+                    })
+                    .unwrap(),
+            );
         }
         false
     }
@@ -125,18 +155,23 @@ impl Object for GenericObject {
     }
 
     fn get_obj_rect(&self) -> Rectangle {
-        return rrect(
-                self.pos.x, self.pos.y,
-                self.object_data.1.dim.0,
-                self.object_data.1.dim.1,
-            )
+        rrect(
+            self.pos.x,
+            self.pos.y,
+            self.object_data.1.dim.0,
+            self.object_data.1.dim.1,
+        )
     }
 
     fn get_collision_rect(&self) -> Rectangle {
         if let Some(rec) = self.b_box {
-            rrect(rec.x + self.pos.x as f32, rec.y + self.pos.y as f32,
-                  rec.width, rec.height)
-        }else{
+            rrect(
+                rec.x + self.pos.x as f32,
+                rec.y + self.pos.y as f32,
+                rec.width,
+                rec.height,
+            )
+        } else {
             self.get_obj_rect()
         }
     }
@@ -145,6 +180,19 @@ impl Object for GenericObject {
 impl PartialEq for GenericObject {
     fn eq(&self, other: &Self) -> bool {
         self.get_id() == other.get_id()
+    }
+}
+
+impl fmt::Display for GenericObject {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} id {}: {}, depth {}",
+            self.object_data.1.name,
+            self.id,
+            self.pos,
+            self.get_depth()
+        )
     }
 }
 
@@ -324,9 +372,9 @@ impl Saveable<Self> for Position {
     }
 
     fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<Self>, Box<dyn std::error::Error>> {
-        let result = Position{
-           x: i32::from_bytes(&bytes[0..4])?.0,
-           y: i32::from_bytes(&bytes[4..8])?.0,
+        let result = Position {
+            x: i32::from_bytes(&bytes[0..4])?.0,
+            y: i32::from_bytes(&bytes[4..8])?.0,
         };
         Ok(SaveInfo(result, 8))
     }
@@ -360,4 +408,3 @@ impl Saveable<Self> for GenericObject {
         Ok(SaveInfo(obj, 32))
     }
 }
-

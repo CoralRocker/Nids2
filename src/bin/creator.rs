@@ -41,7 +41,7 @@ fn divisors_bar(num: i32) -> Result<Vec<i32>, String> {
     Ok(res)
 }
 
-fn div_to_cstr(nvec: &Vec<i32>) -> CString {
+fn div_to_cstr(nvec: &[i32]) -> CString {
     let mut res_str = String::new();
     for num in nvec.iter() {
         res_str.push_str(format!("{};", num).as_str());
@@ -97,7 +97,6 @@ fn anim_selector(
     *val = rld.gui_scroll_bar(gui_bound, *val, min, max);
 }
 
-
 // Scales a rectangle to the given width and height. Preserves aspect
 // ratio. Scales width before height. Scales both larger and smaller.
 pub fn scale_to(src: &mut Rectangle, width: f32, height: f32) {
@@ -135,7 +134,7 @@ struct CreatedObject {
 
 fn find_obj(
     name: &str,
-    vec: &Vec<std::sync::Arc<(Texture2D, ObjectConfig)>>,
+    vec: &[std::sync::Arc<(Texture2D, ObjectConfig)>],
 ) -> Option<std::sync::Arc<(Texture2D, ObjectConfig)>> {
     for tup in vec.iter() {
         let conf = &tup.1;
@@ -146,7 +145,7 @@ fn find_obj(
     None
 }
 
-fn find_i32(target: i32, vec: &Vec<i32>) -> Option<usize> {
+fn find_i32(target: i32, vec: &[i32]) -> Option<usize> {
     for i in 0..vec.len() {
         if target == *vec.get(i).unwrap() {
             return Some(i);
@@ -374,7 +373,6 @@ fn main() {
                         Color::BLACK,
                     );
 
-
                     // Previous Subimage and Next Subimage buttons
                     if ds_rounded_button_centered(
                         &mut d,
@@ -428,14 +426,18 @@ fn main() {
                         //     Some(rstr!("toggle animation")),
                         //     animating,
                         // );
-                        ds_draw_toggle_rounded_centered(&mut d,
-                                               &font,
-                                               Some("toggle animation"),
-                                               rrect(frame_rect.x + frame_rect.width/2.,
-                                                     frame_rect.y + frame_rect.height + 88.,
-                                                     184,
-                                                     24),
-                                               &mut animating);
+                        ds_draw_toggle_rounded_centered(
+                            &mut d,
+                            &font,
+                            Some("toggle animation"),
+                            rrect(
+                                frame_rect.x + frame_rect.width / 2.,
+                                frame_rect.y + frame_rect.height + 88.,
+                                184,
+                                24,
+                            ),
+                            &mut animating,
+                        );
 
                         if animating && frame_count % speed == 0 {
                             preview_subimage += 1;
@@ -468,7 +470,7 @@ fn main() {
                             + items.get(edit_object as usize).unwrap()
                             + "/spr.png";
 
-                        spritesheet = unsafe { Texture2D::from_raw(preview_obj.0.clone()) };
+                        spritesheet = unsafe { Texture2D::from_raw(*preview_obj.0) };
                         obj.image_name = fname;
                         obj.conf = preview_obj.1.clone();
 
@@ -514,8 +516,6 @@ fn main() {
                 1.0,
                 Color::BLACK,
             );
-
-            
 
             // DRAW IMPORTANT CONTROLS
             d.gui_panel(Rectangle {
@@ -574,14 +574,20 @@ fn main() {
                     }
                 }
                 let spr_rect = rrect(spr_w * cur_subimg, spr_h * side, spr_w, spr_h);
-                let mut draw_rect = spr_rect.clone();
-                scale_to(&mut draw_rect, (scr_w/2) as f32, 290.0);
+                let mut draw_rect = spr_rect;
+                scale_to(&mut draw_rect, (scr_w / 2) as f32, 290.0);
                 draw_rect.x = (scr_w as f32 * 0.75) - (draw_rect.width / 2.0);
                 draw_rect.y = scr_h as f32 - draw_rect.height;
-                d.draw_texture_pro(&spritesheet, spr_rect, draw_rect, rvec2(0,0), 0.0, Color::WHITE);
+                d.draw_texture_pro(
+                    &spritesheet,
+                    spr_rect,
+                    draw_rect,
+                    rvec2(0, 0),
+                    0.0,
+                    Color::WHITE,
+                );
                 // anim_frame(&mut d, &spritesheet, spr_w, spr_h, side, cur_subimg, pos);
             }
-            
 
             /* DRAW AND EXECUTE SAVE AND EXIT */
             if !bounding_box_mode
@@ -593,8 +599,7 @@ fn main() {
                 let path = format!("obj/{}", obj.conf.name);
                 let new_obj = fs::read_dir(path).is_err();
 
-                let spr_w =
-                    spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
+                let spr_w = spritesheet.width() / subimage_options.get(subimage as usize).unwrap();
                 let spr_h = spritesheet.height() / side_options.get(side as usize).unwrap();
                 obj.conf.dim = (spr_w, spr_h);
                 obj.conf.sides = *side_options.get(side as usize).unwrap();
@@ -604,9 +609,9 @@ fn main() {
                 } else {
                     obj.conf.image_speed = None;
                 }
-                
+
                 let path = format!("obj/{}", obj.conf.name);
-                
+
                 if new_obj {
                     obj.conf.id = get_next_id();
                     let _ = fs::DirBuilder::new().create(&path);
@@ -618,7 +623,7 @@ fn main() {
                 let _ = file.write(toml.as_bytes());
                 object_mode = false;
             }
-            
+
             /* DRAW ERROR MESSAGES, IF ANY */
             if let Some((e, f)) = &err {
                 let trans_frame = f + 180;
@@ -637,7 +642,7 @@ fn main() {
                     err = None;
                 }
             }
-            
+
             /* BOUNDING BOX BUTTON */
             if !bounding_box_mode
                 && d.gui_button(
@@ -656,7 +661,7 @@ fn main() {
                     obj.conf.img_per_side = *subimage_options.get(subimage as usize).unwrap();
                 }
             }
-            
+
             /* DRAW BOUNDING BOX EDITOR OVER REST OF SCREEN */
             if bounding_box_mode {
                 let mode_rect = rrect(
