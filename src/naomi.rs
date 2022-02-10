@@ -25,6 +25,10 @@ pub fn dir_to_i32(dir: &Direction) -> i32 {
     dir_to_u32(dir) as i32
 }
 
+/// Type alias because me is lazy
+type GenObj = Rc<RefCell<GenericObject>>;
+
+
 /** Main player for the game. Has additional methods compared to basic objects to allow for control
  * of the game state.
  */
@@ -35,7 +39,7 @@ pub struct Naomi {
     pub scrw: i32,
     pub scrh: i32,
     pub select_obj_type: i32,
-    pub select_obj: Option<Rc<RefCell<GenericObject>>>,
+    pub select_obj: Option<GenObj>,
     pub colormod: color::Color,
 }
 
@@ -139,15 +143,36 @@ impl Naomi {
     pub fn is_spot_free(
         &self,
         spot: Rectangle,
-        objects: &[std::rc::Rc<RefCell<GenericObject>>],
+        objects: &[GenObj],
     ) -> bool {
         for obj in objects.iter() {
-            if obj.borrow().collide(Some(&spot)) {
+            if let Some(o) = &self.select_obj {
+                if *o.borrow() == *obj.borrow(){
+                    continue;
+                }
+            }
+            if obj.borrow().collide(Some(&spot)){
                 return false;
             }
         }
 
         true
+    }
+    
+    /// Takes in an object and sets its position correctly.
+    pub fn grab_object(
+        &self,
+        obj: GenObj
+    ) {
+        let mut obj = obj.borrow_mut();
+        let obj_position: Position = match self.dir {
+            Direction::Right => self.base.pos.offset(32, 16 - obj.height() / 2),
+            Direction::Up => self.base.pos.offset(16 - obj.width() / 2, -obj.height()),
+            Direction::Left => self.base.pos.offset(-obj.width(), 16 - obj.height() / 2),
+            Direction::Down => self.base.pos.offset(16 - obj.width() / 2, 48),
+        };
+
+        obj.pos = obj_position;
     }
 
     /** Check for recent input from the user
@@ -156,8 +181,8 @@ impl Naomi {
         &mut self,
         rl: &mut RaylibHandle,
         next_id: &mut i32,
-        objects: &mut Vec<std::rc::Rc<RefCell<GenericObject>>>,
-    ) -> Option<Rc<RefCell<GenericObject>>> {
+        objects: &mut Vec<GenObj>,
+    ) -> Option<GenObj> {
         if self.moving {
             return None;
         }
@@ -275,17 +300,11 @@ impl Naomi {
                 self.select_obj = None;
                 return Some(obj);
             }
-
-            let mut obj = o.borrow_mut();
+            
             if old_dir != self.dir {
-                let obj_position: Position = match self.dir {
-                    Direction::Right => self.base.pos.offset(32, 16 - obj.height() / 2),
-                    Direction::Up => self.base.pos.offset(16 - obj.width() / 2, -obj.height()),
-                    Direction::Left => self.base.pos.offset(-obj.width(), 16 - obj.height() / 2),
-                    Direction::Down => self.base.pos.offset(16 - obj.width() / 2, 48),
-                };
-                obj.pos = obj_position;
+                self.grab_object(o.clone());
             }
+
         }
 
         if old_dir != self.dir {
@@ -306,18 +325,11 @@ impl Naomi {
             } else {
                 let mut obj = GenericObject::new(*next_id, self.select_obj_type, None);
                 *next_id += 1;
-                let obj_position: Position = match self.dir {
-                    Direction::Right => self.base.pos.offset(32, 16 - obj.height() / 2),
-                    Direction::Up => self.base.pos.offset(16 - obj.width() / 2, -obj.height()),
-                    Direction::Left => self.base.pos.offset(-obj.width(), 16 - obj.height() / 2),
-                    Direction::Down => self.base.pos.offset(16 - obj.width() / 2, 48),
-                };
-
-                obj.pos = obj_position;
                 obj.colormod = self.colormod; // Set object colormod to our selected color
 
                 let obj = Rc::new(RefCell::new(obj));
 
+                self.grab_object(obj.clone());
                 self.select_obj = Some(obj.clone());
 
                 objects.push(obj);
@@ -379,7 +391,7 @@ impl Saveable<Self> for Naomi {
             base.0
         };
         let select_obj = {
-            let base = Option::<Rc<RefCell<GenericObject>>>::from_bytes(&bytes[bytes_read..])?;
+            let base = Option::<GenObj>::from_bytes(&bytes[bytes_read..])?;
             bytes_read += base.1;
             base.0
         };

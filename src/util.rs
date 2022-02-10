@@ -11,7 +11,7 @@ use std::ffi::CString;
 use std::sync::Arc;
 
 /// Get Vector of all unique categories that contain objects.
-pub fn get_all_types() -> Vec<String> {
+pub fn get_all_types(only_placeable: bool) -> Vec<String> {
     let mut result = Vec::new();
 
     for item in LOADED_TEXTURES
@@ -21,7 +21,11 @@ pub fn get_all_types() -> Vec<String> {
     {
         let item = item.1; // get Value from (K, V) pair
         let item = &item.1; // get &ObjectConfig from Arc<(Texture2D, ObjectConfig>
-        result.push(item.category.clone());
+        if only_placeable && !(item.category.eq("sys") || item.category.eq("player")) {
+            result.push(item.category.clone());
+        }else if !only_placeable {
+            result.push(item.category.clone());
+        }
     }
 
     result.sort_unstable();
@@ -45,17 +49,17 @@ pub fn get_all_objects() -> Vec<Arc<(Texture2D, ObjectConfig)>> {
 }
 
 /// Get Hashmap with all object types sorted by their categories.
-pub fn get_all_objects_sorted() -> HashMap<String, Vec<Arc<(Texture2D, ObjectConfig)>>> {
+pub fn get_all_objects_sorted(only_placeable: bool) -> HashMap<String, Vec<Arc<(Texture2D, ObjectConfig)>>> {
     let mut result = HashMap::new();
 
-    let types = get_all_types();
+    let types = get_all_types(only_placeable);
 
     let all_objs = get_all_objects();
 
     for t in types.iter() {
         let mut objs = Vec::new();
         for obj in all_objs.iter() {
-            if obj.1.category == *t {
+            if obj.1.category.eq(t) {
                 objs.push(obj.clone());
             }
         }
@@ -233,6 +237,7 @@ pub fn ds_rounded_rectangle_lines(
 }
 
 /// Draws a rounded button centered.
+/// Returns a boolean for whether it was pressed and a vector2 which points to the top left corner of the drawn button.
 pub fn ds_rounded_button_centered(
     rd: &mut RaylibDrawHandle,
     font: &Font,
@@ -253,6 +258,7 @@ pub fn ds_rounded_button_centered(
 }
 
 /// Draws a rounded button with the default rgui style
+/// Returns a boolean for whether it was pressed and a vector2 which points to the top left corner of the drawn button.
 pub fn ds_rounded_button(
     rd: &mut RaylibDrawHandle,
     font: &Font,

@@ -65,6 +65,7 @@ pub trait Object {
     fn get_collision_rect(&self) -> Rectangle;
 }
 
+
 /** The base for all objects. Grabs data from the LOADED_TEXTURES static variable and uses it to initialize an object of a known type.
  */
 pub struct GenericObject {
@@ -80,6 +81,7 @@ pub struct GenericObject {
     pub depthmod: i32,
     pub colormod: Color,
 }
+
 
 impl Object for GenericObject {
     /** Simply draw the current sprite on the screen at the object's position. No color tinting or anything at all

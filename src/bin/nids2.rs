@@ -15,7 +15,10 @@ use std::io::Read;
 use std::rc;
 use std::sync::{atomic, Mutex};
 
-fn save_to_file(fname: &str, objs: &[rc::Rc<RefCell<object::GenericObject>>], player: &Naomi) {
+/// Type alias because me is lazy
+type GenObj = rc::Rc<RefCell<object::GenericObject>>;
+
+fn save_to_file(fname: &str, objs: &[GenObj], player: &Naomi) {
     let mut result = objs.to_bytes();
     result.extend(player.to_bytes().iter());
     fs::write(fname, result).unwrap();
@@ -23,14 +26,14 @@ fn save_to_file(fname: &str, objs: &[rc::Rc<RefCell<object::GenericObject>>], pl
 
 fn load_from_file(
     fname: &str,
-    objs: &mut Vec<rc::Rc<RefCell<object::GenericObject>>>,
+    objs: &mut Vec<GenObj>,
     player: &mut Naomi,
 ) {
     let mut file = fs::File::open(fname).unwrap();
     let mut result = Vec::new();
     let size = file.read_to_end(&mut result).unwrap();
     let objs_res =
-        Vec::<rc::Rc<RefCell<object::GenericObject>>>::from_bytes(result.as_slice()).unwrap();
+        Vec::<GenObj>::from_bytes(result.as_slice()).unwrap();
     let plyr_res = Naomi::from_bytes(&result[objs_res.1..]).unwrap();
 
     *objs = objs_res.0;
@@ -46,10 +49,11 @@ enum MenuSelections {
     SaveExit,
 }
 
+
 fn main() {
     let scr_w = 640;
     let scr_h = 480;
-    let debug = true;
+    let debug = false;
 
     /* GAME SCREEN AND STATIC INITIALIZATION */
     let (mut rl, thread) = raylib::init()
@@ -77,10 +81,11 @@ fn main() {
     let mut opt_scroll_index = 0;
     let mut selected_item = 0;
     let mut selected_item_scroll_index = 0;
+    let mut drag: Option<(GenObj, Vector2, Vector2)> = None; // Hold whether or not an object drag was detected
 
     /* Constant Object Type Vectors */
-    let types_vec = util::get_all_types();
-    let sorted_objs = util::get_all_objects_sorted();
+    let types_vec = util::get_all_types(true);
+    let sorted_objs = util::get_all_objects_sorted(true);
 
     /* Color Selection Vector */
     let color_wheel = vec![
@@ -162,7 +167,7 @@ fn main() {
             .expect("Unable load texture from image!")
     };
 
-    let mut obj_refactor: Vec<rc::Rc<RefCell<object::GenericObject>>> = Vec::new();
+    let mut obj_refactor: Vec<GenObj> = Vec::new();
 
     // Create Naomi Player Object
     let mut naomi = naomi::Naomi::new(object::Position::new(64, 64), 1, scr_w, scr_h);
@@ -232,31 +237,84 @@ fn main() {
                 obj_refactor.retain(|obj| obj.borrow().get_id() != r.borrow().get_id());
             }
         }
+        
 
+        /* DRAG GESTURE DETECTION */
         // Pick up an object and move it somewhere
-        if naomi.select_obj.is_none() && rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON)
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON)
         {
+
             // Determine if mouse landed on selectable item
             // Select based off of bounding box, or if None, sprite_area.
             // TODO: Pixel-perfect collisions?
             let pos = rl.get_mouse_position();
 
-            obj_refactor.iter().find(|&obj| {
+            obj_refactor.iter().rev().find(|&obj| {
                 if obj
                     .borrow()
                     .get_collision_rect()
                     .check_collision_point_rec(pos)
-                    && obj.borrow().obj_id > 1
+                    && !obj.borrow().object_data.1.category.eq("sys")
                 {
-                    naomi.select_obj = Some(obj.clone());
-                    naomi.select_obj_type = obj.borrow().obj_id;
+                    if naomi.select_obj.is_none() {
+                        naomi.select_obj = Some(obj.clone());
+                        naomi.select_obj_type = obj.borrow().obj_id;
+                    }
+                    drag = Some((obj.clone(), pos, pos));
+
                     return true;
                 }
                 false
             });
-            // if let Some(o) = &naomi.select_obj {
-            //     obj_refactor.push(o.clone());
-            // }
+        }else if rl.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
+            // DRAG DETECTED! 
+            let pos = rl.get_mouse_position();
+            if let Some((obj, old_pos, first_pos)) = &mut drag {
+                let delta = pos - *old_pos;
+                if obj.borrow().get_collision_rect().check_collision_point_rec(pos) {
+                    *old_pos = pos; 
+                    let mut obj = obj.borrow_mut();
+                    obj.pos.x += delta.x as i32;
+                    obj.pos.y += delta.y as i32;
+                }else{
+                    rl.set_mouse_position(*old_pos);
+                    // { // Preserve our original non-mut obj ptr so we can compare it
+                    //     let mut obj = obj.borrow_mut();
+                    //     obj.pos.x -= obj.pos.x % 4;
+                    //     obj.pos.y -= obj.pos.y % 4;
+                    // } // Mut borrow expires here
+                    // // Remove object from naomi's posession once moved.
+                    // if rl.get_mouse_position() != *first_pos {
+                    //     if let Some(nobj) = &naomi.select_obj {
+                    //         if *nobj.borrow() == *obj.borrow() {
+                    //             naomi.select_obj = None;
+                    //         }   
+                    //     }
+                    // }else{ // Object was selected...
+                    //     naomi.grab_object(obj.clone());
+                    // }
+                    // drag = None;
+                }
+            }
+        }else {
+            if let Some((obj, old_pos, first_pos)) = drag {
+                { // Preserve our original non-mut obj ptr so we can compare it
+                    let mut obj = obj.borrow_mut();
+                    obj.pos.x -= obj.pos.x % 4;
+                    obj.pos.y -= obj.pos.y % 4;
+                } // Mut borrow expires here
+                // Remove object from naomi's posession once moved.
+                if rl.get_mouse_position() != first_pos {
+                    if let Some(nobj) = &naomi.select_obj {
+                        if *nobj.borrow() == *obj.borrow() {
+                            naomi.select_obj = None;
+                        }   
+                    }
+                }else{ // Object was selected...
+                    naomi.grab_object(obj.clone());
+                }
+                drag = None;
+            }
         }
 
         obj_refactor.sort_unstable_by_key(|a| a.borrow().get_depth());
@@ -272,13 +330,14 @@ fn main() {
             let target_depth = naomi.get_depth();
             let mut naomi_drawn = false;
             for obj in obj_refactor.iter() {
+                // Ensure naomi is drawn once, and first at it's depth.
                 if !naomi_drawn && obj.borrow().get_depth() >= target_depth {
                     naomi.draw(&mut d, debug);
                     naomi_drawn = true;
                 }
                 obj.borrow().draw(&mut d, debug);
             }
-            if !naomi_drawn {
+            if !naomi_drawn { // Backup naomi drawing
                 naomi.draw(&mut d, debug);
             }
         }
