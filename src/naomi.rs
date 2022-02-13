@@ -35,6 +35,7 @@ type GenObj = Rc<RefCell<GenericObject>>;
 pub struct Naomi {
     pub base: GenericObject,
     pub moving: bool,
+    pub ghost: bool,
     pub dir: Direction,
     pub scrw: i32,
     pub scrh: i32,
@@ -46,7 +47,7 @@ pub struct Naomi {
 impl Object for Naomi {
     /** Currently the same as the GenericObject draw method.
      */
-    fn draw(&self, rl: &mut RaylibDrawHandle, debug: bool) {
+    fn draw(&self, rl: &mut RaylibTextureMode<RaylibDrawHandle>, debug: bool) {
         self.base.draw(rl, debug);
         // if let Some(obj) = &self.select_obj {
         //     obj.borrow_mut().draw(rl);
@@ -124,6 +125,7 @@ impl Naomi {
         let mut result = Self {
             base: GenericObject::new(1, id, Some(pos)),
             moving: false,
+            ghost: false,
             dir: Direction::Right,
             scrw,
             scrh,
@@ -145,6 +147,8 @@ impl Naomi {
         spot: Rectangle,
         objects: &[GenObj],
     ) -> bool {
+        if self.ghost { return true; }
+
         for obj in objects.iter() {
             if let Some(o) = &self.select_obj {
                 if *o.borrow() == *obj.borrow(){
@@ -318,6 +322,15 @@ impl Naomi {
             }
             self.base.set_shift(self.base.get_default_shift());
         }
+        
+        if rl.is_key_pressed(KeyboardKey::KEY_G) {
+            self.ghost = !self.ghost;
+            if self.ghost {
+                self.base.colormod = self.base.colormod.fade(0.75);
+            }else{
+                self.base.colormod = Color::WHITE;
+            }
+        }
 
         if self.select_obj_type != 0 && rl.is_key_pressed(KeyboardKey::KEY_SPACE) {
             if self.select_obj.is_some() {
@@ -360,6 +373,7 @@ impl Saveable<Self> for Naomi {
     fn to_bytes(&self) -> Vec<u8> {
         let mut result = self.base.to_bytes();
         result.extend(self.moving.to_bytes());
+        result.extend(self.ghost.to_bytes());
         result.extend(self.dir.to_bytes());
         result.extend(self.select_obj_type.to_bytes());
         result.extend(self.select_obj.to_bytes());
@@ -376,6 +390,11 @@ impl Saveable<Self> for Naomi {
             base.0
         };
         let moving = {
+            let base = bool::from_bytes(&bytes[bytes_read..])?;
+            bytes_read += base.1;
+            base.0
+        };
+        let ghost = {
             let base = bool::from_bytes(&bytes[bytes_read..])?;
             bytes_read += base.1;
             base.0
@@ -410,19 +429,19 @@ impl Saveable<Self> for Naomi {
             bytes_read += base.1;
             base.0
         };
-
-        Ok(SaveInfo(
-            Naomi {
-                base,
-                moving,
-                dir,
-                scrw,
-                scrh,
-                select_obj_type,
-                select_obj,
-                colormod,
-            },
-            bytes_read,
-        ))
+        
+        let mut naomi = Naomi {
+            base,
+            moving,
+            ghost,
+            dir,
+            scrw,
+            scrh,
+            select_obj_type,
+            select_obj,
+            colormod,
+        };
+        naomi.base.set_shift(0);
+        Ok(SaveInfo(naomi, bytes_read))
     }
 }

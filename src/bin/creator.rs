@@ -213,6 +213,7 @@ fn main() {
     );
 
     let mut frame_count = 0;
+    // let mut target = handle.load_render_texture(&thread, scr_w as u32, scr_h as u32).unwrap();
 
     while !handle.window_should_close() {
         frame_count += 1;
@@ -220,6 +221,7 @@ fn main() {
         if handle.is_window_resized() {
             scr_w = handle.get_screen_width();
             scr_h = handle.get_screen_height();
+            // target = handle.load_render_texture(&thread, scr_w as u32, scr_h as u32).unwrap();
         }
 
         if handle.is_file_dropped() {
@@ -250,6 +252,7 @@ fn main() {
 
         let k = handle.get_key_pressed();
         let mut d = handle.begin_drawing(&thread);
+        // let mut d = d.begin_texture_mode(&thread, &mut target);
 
         d.clear_background(Color::SKYBLUE);
 
@@ -678,7 +681,7 @@ fn main() {
                     .map(|tup| (&mut tup.0, &mut tup.1, &mut tup.2, &mut tup.3))
                     .unwrap();
 
-                let src_rect = rrect(0, 0, obj.conf.dim.0, obj.conf.dim.1);
+                let src_rect = rrect(preview_subimage * obj.conf.dim.0, 0, obj.conf.dim.0, obj.conf.dim.1);
                 let mut spr_rect = rrect(
                     mode_rect.x + mode_rect.width / 2.0,
                     mode_rect.y + mode_rect.height / 2.0,
@@ -722,7 +725,7 @@ fn main() {
                     &font,
                     "Modify BBox X",
                     rvec2(
-                        mode_rect.x + mode_rect.width * (2.0 / 8.0),
+                        mode_rect.x + mode_rect.width * (1.5 / 8.0),
                         mode_rect.y + mode_rect.height * (1.0 / 3.0),
                     ),
                     mode_rect.width / 4.0,
@@ -737,7 +740,7 @@ fn main() {
                     &font,
                     "Modify BBox Y",
                     rvec2(
-                        mode_rect.x + mode_rect.width * (2.0 / 8.0),
+                        mode_rect.x + mode_rect.width * (1.5 / 8.0),
                         mode_rect.y + mode_rect.height * (2.0 / 3.0),
                     ),
                     mode_rect.width / 4.0,
@@ -752,7 +755,7 @@ fn main() {
                     &font,
                     "Modify BBOx WIDTH",
                     rvec2(
-                        mode_rect.x + mode_rect.width * (6.0 / 8.0),
+                        mode_rect.x + mode_rect.width * (6.5 / 8.0),
                         mode_rect.y + mode_rect.height * (1.0 / 3.0),
                     ),
                     mode_rect.width / 4.0,
@@ -767,7 +770,7 @@ fn main() {
                     &font,
                     "Modify BBOx HEIGHT",
                     rvec2(
-                        mode_rect.x + mode_rect.width * (6.0 / 8.0),
+                        mode_rect.x + mode_rect.width * (6.5 / 8.0),
                         mode_rect.y + mode_rect.height * (2.0 / 3.0),
                     ),
                     mode_rect.width / 4.0,
@@ -801,6 +804,47 @@ fn main() {
                     true,
                 );
 
+                // Previous Subimage and Next Subimage buttons
+                if ds_rounded_button_centered(
+                    &mut d,
+                    &font,
+                    rrect(
+                        spr_rect.x + (1.0 / 8.0) * spr_rect.width,
+                        spr_rect.y + spr_rect.height + 12.0,
+                        48,
+                        16,
+                    ),
+                    Some("prev"),
+                    true,
+                )
+                .0
+                {
+                    preview_subimage -= 1;
+                    if preview_subimage < 0 {
+                        preview_subimage = obj.conf.img_per_side - 1;
+                    }
+                }
+
+                if ds_rounded_button_centered(
+                    &mut d,
+                    &font,
+                    rrect(
+                        spr_rect.x + (7.0 / 8.0) * spr_rect.width,
+                        spr_rect.y + spr_rect.height + 12.0,
+                        48,
+                        16,
+                    ),
+                    Some("next"),
+                    true,
+                )
+                .0
+                {
+                    preview_subimage += 1;
+                    if preview_subimage >= obj.conf.img_per_side {
+                        preview_subimage = 0;
+                    }
+                }
+
                 let mut bbox = rrect(*x, *y, *width, *height);
                 let factor = spr_rect.width / src_rect.width;
                 bbox.x *= factor;
@@ -810,11 +854,19 @@ fn main() {
                 bbox.width *= factor;
                 bbox.height *= factor;
                 d.draw_rectangle_lines_ex(bbox, 1, Color::BLACK);
-
+                d.draw_rectangle_lines_ex(spr_rect, 1, Color::BLACK);
                 if exit_bbox {
                     bounding_box_mode = false;
                 }
             }
         }
+        
+        // d.draw_texture_pro(&target,
+        //                    rrect(0,0, target.width(), -target.height()),
+        //                    rrect(0,0, target.width(), target.height()),
+        //                    rvec2(0,0),
+        //                    0.,
+        //                    Color::WHITE);
+
     }
 }

@@ -55,7 +55,7 @@ impl fmt::Display for Position {
 /** This trait defines what methods all objects are expected to implement.
  */
 pub trait Object {
-    fn draw(&self, rl: &mut RaylibDrawHandle, debug: bool);
+    fn draw(&self, rl: &mut RaylibTextureMode<RaylibDrawHandle>, debug: bool);
     fn do_step(&mut self, frame_no: i32);
     fn collide(&self, other: Option<&Rectangle>) -> bool;
     fn get_b_box(&self) -> Option<&Rectangle>;
@@ -86,7 +86,7 @@ pub struct GenericObject {
 impl Object for GenericObject {
     /** Simply draw the current sprite on the screen at the object's position. No color tinting or anything at all
      */
-    fn draw(&self, rl: &mut RaylibDrawHandle, debug: bool) {
+    fn draw(&self, rl: &mut RaylibTextureMode<RaylibDrawHandle>, debug: bool) {
         let tex = &self.object_data.0;
         let obj = &self.object_data.1;
         let spr_rect = Rectangle {

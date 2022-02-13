@@ -389,14 +389,30 @@ pub fn ds_scroll_selection_ex(
 
     let num_items = (rec.height - 12.0) as i32 / item_rect.height as i32;
 
+    let mut k_input = false;    
+
+    // Keyboard input
+    if rd.is_key_pressed(KEY_DOWN) {
+        *top_item_index += 1;
+        k_input = true;
+    }else if rd.is_key_pressed(KEY_UP) {
+        *top_item_index -= 1;
+        k_input = true;
+    }
+    
     // Scroll Selection Logic
     if *top_item_index >= selections.len() as i32 {
-        *top_item_index = selections.len() as i32 - num_items;
+        *top_item_index = selections.len() as i32 - 1; // num_items;
     }
     if *top_item_index < 0 {
         *top_item_index = 0;
     }
 
+    if k_input {
+        *selection = *top_item_index;
+    }
+
+    // Draw items
     for n in 0..num_items {
         item_rect.y += item_rect.height + 2.0;
         let (cx, cy) = rect_midpoint(item_rect);
@@ -407,11 +423,14 @@ pub fn ds_scroll_selection_ex(
         if n + *top_item_index == *selection {
             rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::GRAY.fade(0.40));
         }
+
+        // Check if were hovering on an item
         if item_rect.check_collision_point_rec(rd.get_mouse_position()) {
             if txt.is_some() {
                 rd.draw_rectangle_rounded(item_rect, 0.5, 4, Color::WHITE.fade(0.40));
             }
-
+            
+            // Select item
             if rd.is_mouse_button_pressed(MouseButton::MOUSE_LEFT_BUTTON)
                 && *top_item_index + n < selections.len() as i32
             {
@@ -420,7 +439,14 @@ pub fn ds_scroll_selection_ex(
             }
         }
     }
+    
+    // Check if we pressed enter.
+    if rd.is_key_pressed(KEY_ENTER) {
+        *selection = *top_item_index;
+        return true;
+    }
 
+    // Scroll input
     if active {
         *top_item_index += -rd.get_mouse_wheel_move() as i32;
         if *top_item_index < 0 {

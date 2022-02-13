@@ -12,7 +12,8 @@ use raylib::color;
 use raylib::prelude::*;
 
 /// Holds a read object T, and the amount of bytes read for that object.
-/// Used to track how many bytes of a bytearray have been read.
+/// Because Saveable::from_bytes() doesn't consume the bytes read, this allows the user
+/// to tell where in their bytearray they are.
 pub struct SaveInfo<T>(pub T, pub usize);
 
 /// Trait converting from a type to a byte array so that
@@ -232,6 +233,33 @@ where
             Ok(SaveInfo(Some(res.0), res.1 + 4))
         } else {
             Ok(SaveInfo(None, 4))
+        }
+    }
+}
+
+impl<T, E> Saveable<Self> for Result<T, E>
+where
+    T: Saveable<T>,
+    E: Saveable<E>,
+{
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut result = self.is_ok().to_bytes();
+        if let Ok(t) = self {
+            result.extend(t.to_bytes().iter());
+        }else if let Err(e) = self {
+            result.extend(e.to_bytes().iter());
+        }
+        
+        result
+    }
+    fn from_bytes(bytes: &[u8]) -> Result<SaveInfo<Self>, Box<dyn error::Error>> {
+        let is_ok  = bool::from_bytes(bytes)?;
+        if is_ok.0 {
+            let t = T::from_bytes(&bytes[is_ok.1..])?;
+            Ok(SaveInfo(Ok(t.0), t.1+is_ok.1))
+        }else{
+            let e = E::from_bytes(&bytes[is_ok.1..])?;
+            Ok(SaveInfo(Err(e.0), e.1 + is_ok.1))
         }
     }
 }
