@@ -58,6 +58,8 @@ enum MenuSelections {
 fn main() {
     let scr_w = 640;
     let scr_h = 640;
+    let game_w = 320;
+    let game_h = 320;
     let debug = false;
 
     /* GAME SCREEN AND STATIC INITIALIZATION */
@@ -153,11 +155,11 @@ fn main() {
 
     // Generate tiled background at the start of the game program.
     let background_tiles = {
-        let mut bckg = Image::gen_image_color(scr_w, scr_h, Color::WHITE);
+        let mut bckg = Image::gen_image_color(game_w, game_h, Color::WHITE);
         let tile = Image::load_image("data/spr_tile.png").expect("Unable to open tile sprite!");
         let tile_rect = rrect(0, 0, tile.width(), tile.height());
-        let tile_h = scr_w / tile.width();
-        let tile_v = scr_h / tile.height();
+        let tile_h = game_w / tile.width();
+        let tile_v = game_h / tile.height();
         let mut draw_rect = tile_rect;
 
         for i in 0..tile_v {
@@ -175,7 +177,7 @@ fn main() {
     let mut obj_refactor: Vec<GenObj> = Vec::new();
 
     // Create Naomi Player Object
-    let mut naomi = naomi::Naomi::new(object::Position::new(64, 64), 1, scr_w, scr_h);
+    let mut naomi = naomi::Naomi::new(object::Position::new(64, 64), 1, game_w, game_h);
     id_counter += 1;
     
     // Load save file or create appropriate new game setup
@@ -202,7 +204,7 @@ fn main() {
         //
         // Create Walls
         //
-        for x in (32..scr_w - 32).step_by(32) {
+        for x in (32..game_w - 32).step_by(32) {
             obj_refactor.push(rc::Rc::new(RefCell::new(GenericObject::new(
                 id_counter,
                 0,
@@ -211,7 +213,7 @@ fn main() {
 
             id_counter += 1;
         }
-        for y in (0..scr_h).step_by(64) {
+        for y in (0..game_h).step_by(64) {
             obj_refactor.push(rc::Rc::new(RefCell::new(GenericObject::new(
                 id_counter,
                 9,
@@ -221,10 +223,10 @@ fn main() {
             obj_refactor.push(rc::Rc::new(RefCell::new(GenericObject::new(
                 id_counter,
                 9,
-                Some(Position::new(scr_w - 32, y)),
+                Some(Position::new(game_w - 32, y)),
             ))));
-            if y == (scr_h as f32 * (1.5/3.)) as i32 {
-                for x in 32..(scr_w as f32 * (4./7.))as i32 {
+            if y == (game_h as f32 * (1.5/3.)) as i32 {
+                for x in 32..(game_w as f32 * (4./7.))as i32 {
                     obj_refactor.push(rc::Rc::new(RefCell::new(GenericObject::new(
                         id_counter,
                         0,
@@ -240,7 +242,7 @@ fn main() {
     }
     
 
-    let mut target = rl.load_render_texture(&thread, scr_w as u32, scr_h as u32).unwrap(); 
+    let mut target = rl.load_render_texture(&thread, game_w as u32, game_h as u32).unwrap(); 
 
     /* GAME LOOP */
     while !exit {
@@ -401,7 +403,7 @@ fn main() {
         // Draw render target
         d.draw_texture_pro(&target,
                            rrect(0,0, target.width(), -target.height()),
-                           rrect(0,0, target.width(), target.height()),
+                           rrect(0,0, scr_w, scr_h),
                            rvec2(0,0),
                            0.,
                            Color::WHITE);
