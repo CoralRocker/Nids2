@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["set_trace_log","Set the current threshold (minimum) log level"],["trace_log","Writes a trace log message (`Log::INFO`, `Log::WARNING`, `Log::ERROR`, `Log::DEBUG`)."]]});

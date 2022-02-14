@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["cfg_if","creator","lazy_static","libc","nids2","poc","proc_macro2","quote","raylib","raylib_sys","serde","serde_derive","syn","toml","unicode_xid"];
