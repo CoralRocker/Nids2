@@ -1,9 +1,0 @@
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/lib/libraylib.a
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/include/raylib.h
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/include/rlgl.h
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/include/physac.h
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/include/raymath.h
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/include/raudio.h
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/lib/pkgconfig/raylib.pc
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/lib/cmake/raylib/raylib-config-version.cmake
-/target/x86_64-pc-windows-gnu/release/build/raylib-sys-45223963e2ea3f85/out/lib/cmake/raylib/raylib-config.cmake

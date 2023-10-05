@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Direction",""]],"fn":[["dir_to_i32",""],["dir_to_u32",""]],"struct":[["Naomi","Main player for the game. Has additional methods compared to basic objects to allow for control"]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["get_pixel_data_size","Gets pixel data size in bytes (image or texture)."]],"struct":[["Image",""],["ImageColors",""],["ImagePalette",""],["NPatchInfo",""],["RenderTexture2D",""],["Texture2D",""],["WeakRenderTexture2D",""],["WeakTexture2D",""]],"trait":[["RaylibRenderTexture2D",""],["RaylibTexture2D",""]]});

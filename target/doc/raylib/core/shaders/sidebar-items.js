@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Shader",""],["WeakShader",""]],"trait":[["RaylibShader",""],["ShaderV",""]]});

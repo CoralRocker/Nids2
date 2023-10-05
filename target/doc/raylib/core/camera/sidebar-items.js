@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Camera2D",""],["Camera3D",""]],"type":[["Camera",""]]});

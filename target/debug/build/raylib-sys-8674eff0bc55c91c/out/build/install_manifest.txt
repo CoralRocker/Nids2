@@ -1,9 +1,0 @@
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/lib/libraylib.a
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/include/raylib.h
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/include/rlgl.h
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/include/physac.h
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/include/raymath.h
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/include/raudio.h
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/lib/pkgconfig/raylib.pc
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/lib/cmake/raylib/raylib-config-version.cmake
-/home/tcr-g/Rust/Nids2/target/debug/build/raylib-sys-8674eff0bc55c91c/out/lib/cmake/raylib/raylib-config.cmake

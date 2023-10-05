@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["GenericObject","The base for all objects. Grabs data from the LOADED_TEXTURES static variable and uses it to initialize an object of a known type."],["Position","Simple struct to hold the position in screenspace of an object"]],"trait":[["Object","This trait defines what methods all objects are expected to implement."]]});

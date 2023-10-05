@@ -1,1 +1,0 @@
-/home/tcr-g/Rust/Nids2/target/debug/libnids2.rlib: /home/tcr-g/Rust/Nids2/src/game.rs /home/tcr-g/Rust/Nids2/src/lib.rs /home/tcr-g/Rust/Nids2/src/naomi.rs /home/tcr-g/Rust/Nids2/src/object.rs /home/tcr-g/Rust/Nids2/src/save.rs /home/tcr-g/Rust/Nids2/src/util.rs
